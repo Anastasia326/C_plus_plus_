@@ -1,0 +1,135 @@
+#include <iostream>
+#include <vector>
+#include <set>
+#include <algorithm>
+
+struct Data {
+    int x;
+    int y;
+    int index;
+
+    Data(int my_x, int my_y, int i) : x(my_x), y(my_y), index(i) {
+    }
+
+    bool operator<(const Data &another) const {
+        return x < another.x;
+    }
+};
+
+template<typename KeyT, typename PriorityT>
+class Treap {
+private:
+    struct Node {
+        KeyT key;
+        PriorityT priority;
+        Node *left = nullptr;
+        Node *right = nullptr;
+        Node *parent = nullptr;
+        size_t index = 0;
+
+        Node(const KeyT &new_key, int pr, int id) : key(new_key), priority(pr), index(id) {
+        }
+    };
+
+    Node *root_;
+
+    static void SetLeft(Node *node, Node *left) {
+        if (node != nullptr) {
+            node->left = left;
+        }
+        if (left != nullptr) {
+            left->parent = node;
+        }
+    }
+
+    static void SetRight(Node *node, Node *right) {
+        if (node != nullptr) {
+            node->right = right;
+        }
+        if (right != nullptr) {
+            right->parent = node;
+        }
+    }
+
+    static void Clean(Node *node) {
+        if (node->left != nullptr) {
+            Clean(node->left);
+        }
+        if (node->right != nullptr) {
+            Clean(node->right);
+        }
+        delete node;
+    }
+
+    static std::pair<Node *, Node *> Split(Node *root, const KeyT &new_key) {
+        if (root == nullptr) {
+            return {nullptr, nullptr};
+        }
+        if (root->key < new_key) {
+            std::pair<Node *, Node *> now_split = Split(root->right, new_key);
+            SetRight(root, now_split.first);
+            return {root, now_split.second};
+        } else {
+            std::pair<Node *, Node *> now_split = Split(root->left, new_key);
+            SetLeft(root, now_split.second);
+            return {now_split.first, root};
+        }
+    }
+
+    static Node *Merge(Node *left, Node *right) {
+        if (left == nullptr) {
+            return right;
+        }
+        if (right == nullptr)
+            return left;
+        if (left->priority < right->priority) {
+            SetRight(left, Merge(left->right, right));
+            return left;
+        } else {
+            SetLeft(right, Merge(left, right->left));
+            return right;
+        }
+    }
+
+    Node *Insert(Node *root, KeyT key, int prior, int index) {
+        std::pair<Node *, Node *> treaps = Split(root, key);
+        auto node = new Node(key, prior, index);
+        return Merge(Merge(treaps.first, node), treaps.second);
+    }
+
+public:
+    Treap() : root_(nullptr) {
+    }
+
+    Treap &operator=(const Treap &other) {
+        if (this != other) {
+            other.root_ = root_;
+        }
+        return *this;
+    }
+
+    void Build(std::vector<Data> &pairs) {
+        root_ = nullptr;
+        Node *last_added = nullptr;
+        for (auto pair : pairs) {
+            while (last_added != nullptr && last_added->priority > pair.y) {
+                last_added = last_added->parent;
+            }
+            Node *new_node = new Node(pair.x, pair.y, pair.index);
+            if (last_added == nullptr) {
+                SetLeft(new_node, root_);
+                root_ = new_node;
+            } else {
+                SetLeft(new_node, last_added->right);
+                SetRight(last_added, new_node);
+            }
+            last_added = new_node;
+        }
+    }
+
+    ~Treap() {
+        Clean(root_);
+    }
+
+};
+

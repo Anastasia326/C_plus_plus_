@@ -1,0 +1,30 @@
+#include <iostream>
+#include <vector>
+#include <string>
+
+std::vector<size_t> Prefix(const std::string_view &my_string) {
+    const auto size = my_string.size();
+    std::vector<size_t> answer(size, 0);
+    size_t position;
+    for (size_t i = 1; i < size; ++i) {
+        position = answer[i - 1];
+        while (position > 0 && my_string[i] != my_string[position]) {
+            position = answer[position - 1];
+        }
+        if (my_string[position] == my_string[i]) {
+            ++position;
+        }
+        answer[i] = position;
+    }
+    return answer;
+}
+
+int main() {
+    std::string my_string;
+    std::cin >> my_string;
+    std::vector<size_t> answer = Prefix(my_string);
+    for (auto ans : answer) {
+        std::cout << ans << " ";
+    }
+}
+

@@ -1,0 +1,156 @@
+#include <iostream>
+#include <cmath>
+#include <algorithm>
+#include <vector>
+#include <set>
+#include <map>
+#include <queue>
+
+std::vector<int> Neighbours(int position) {
+    const int size_of_table = 8;
+    std::vector<int> neighbours;
+    std::vector<int> number(size_of_table + 1);
+    int copy = position;
+    for (int i = size_of_table; i >= 0; --i) {
+        number[i] = copy % 10;
+        copy /= 10;
+    }
+    int place = size_of_table;
+    for (int i = 0; i <= size_of_table; ++i) {
+        if (position % 10 == 9) {
+            break;
+        }
+        position /= 10;
+        --place;
+    }
+
+    if (place >= 3) { //можно идти вверх
+        std::vector<int> number_copy = number;
+        std::swap(number_copy[place], number_copy[place - 3]);
+        int new_number = 0;
+        int counter = 100000000;
+        for (auto symbol : number_copy) {
+            new_number += symbol * counter;
+            counter /= 10;
+        }
+        neighbours.push_back(new_number);
+    }
+    if (place < 6) { //можно идти вниз
+        std::vector<int> number_copy = number;
+        std::swap(number_copy[place], number_copy[place + 3]);
+        int new_number = 0;
+        int counter = 100000000;
+        for (auto symbol : number_copy) {
+            new_number += symbol * counter;
+            counter /= 10;
+        }
+        neighbours.push_back(new_number);
+    }
+    if ((place) % 3 != 0) { // можно идти влево
+        std::vector<int> number_copy = number;
+        std::swap(number_copy[place], number_copy[place - 1]);
+        int new_number = 0;
+        int counter = 100000000;
+        for (auto symbol : number_copy) {
+            new_number += symbol * counter;
+            counter /= 10;
+        }
+        neighbours.push_back(new_number);
+    }
+    if (place % 3 != 2) { // можно идти вправо
+        std::vector<int> number_copy = number;
+        std::swap(number_copy[place], number_copy[place + 1]);
+        int new_number = 0;
+        int counter = 100000000;
+        for (auto symbol : number_copy) {
+            new_number += symbol * counter;
+            counter /= 10;
+        }
+        neighbours.push_back(new_number);
+    }
+
+    return neighbours;
+}
+
+char HowGo(int from, int to) {
+    const int size_of_table = 8;
+    int from_position = size_of_table;
+    int to_position = size_of_table;
+    for (int i = 0; i <= size_of_table; ++i) {
+        if (from % 10 == 9) {
+            break;
+        }
+        from /= 10;
+        --from_position;
+    }
+    for (int i = 0; i <= size_of_table; ++i) {
+        if (to % 10 == 9) {
+            break;
+        }
+        to /= 10;
+        --to_position;
+    }
+    if (to_position == from_position + 1) {
+        return 'R';
+    } else if (to_position == from_position - 1) {
+        return 'L';
+    } else if (to_position > from_position + 1) {
+        return 'D';
+    } else {
+        return 'U';
+    }
+}
+
+std::string BFS(int start_position) {
+    const int end_position = 123456789;
+    std::queue<int> positions;
+    positions.push(start_position);
+    bool end = false;
+    std::set<int> were_here;
+    were_here.insert(start_position);
+    std::map<int, std::string> path;
+    path.insert({start_position, ""});
+    while (!positions.empty() && !end) {
+        int now_position = positions.front();
+        positions.pop();
+        if (now_position == end_position) {
+            end = true;
+        } else {
+            std::vector<int> neighbours = Neighbours(now_position);
+            for (auto neighbour : neighbours) {
+                if (were_here.find(neighbour) == were_here.end()) {
+                    were_here.insert(neighbour);
+                    positions.push(neighbour);
+                    path.insert({neighbour, path[now_position] + HowGo(now_position, neighbour)});
+                }
+            }
+        }
+    }
+
+    if (!end) {
+        return "";
+    }
+    return path[end_position];
+}
+
+int main() {
+    int start = 0;
+    int counter = 100000000;
+    for (int i = 0; i < 9; ++i) {
+        int symbol;
+        std::cin >> symbol;
+        if (symbol == 0) {
+            symbol = 9;
+        }
+        start += symbol * counter;
+        counter /= 10;
+    }
+    std::string answer = BFS(start);
+    if(answer.empty()) {
+        std::cout << -1;
+    } else {
+        std::cout << answer.size() << '\n' << BFS(start);
+    }
+}
+
+

@@ -1,0 +1,71 @@
+#include <iostream>
+#include <vector>
+
+template<class RandomIt>
+void Merge(RandomIt first_begin, RandomIt first_end, RandomIt second_begin, RandomIt second_end,
+           RandomIt answer) {
+    while (first_begin < first_end && second_begin < second_end) {
+        if (*(first_begin) <= *(second_begin)) {
+            *(answer) = *(first_begin);
+            ++answer;
+            ++first_begin;
+        } else {
+            *(answer) = *(second_begin);
+            ++second_begin;
+            ++answer;
+        }
+    }
+    while (first_begin < first_end) {
+        *(answer) = *(first_begin);
+        ++first_begin;
+        ++answer;
+    }
+    while (second_begin < second_end) {
+        *(answer) = *(second_begin);
+        ++second_begin;
+        ++answer;
+    }
+}
+
+
+template<class RandomIt>
+void Mergesort(RandomIt first, RandomIt last, RandomIt second) {
+    size_t size = last - first + 1;
+    int left, right;
+
+    for (int k = 1; k < size; k = 2 * k) {
+        for (int left_index = 0; left_index + k < size; left_index = left_index + 2 * k) {
+            left = left_index + k;
+            right = left + k;
+            if (right > size) {
+                right = size;
+            }
+            Merge(first + left_index, first + left, first + left, first + right,
+                  second + left_index);
+            for (int m_index = left_index; m_index < right; ++m_index) {
+                *(first + m_index) = *(second + m_index);
+            }
+        }
+    }
+}
+
+template<class RandomIt>
+void StartSort(RandomIt first, RandomIt last) {
+    std::vector<int> two(last - first + 1);
+    Mergesort(first, last, two.begin());
+}
+
+int main() {
+    size_t n = 0;
+    std::cin >> n;
+    std::vector<int> one(n);
+
+    for (int i = 0; i < n; ++i) {
+        std::cin >> one[i];
+    }
+    StartSort(one.begin(), std::prev(one.end()));
+
+    for (int i = 0; i < n; ++i) {
+        std::cout << one[i] << " ";
+    }
+}

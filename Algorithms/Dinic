@@ -1,0 +1,94 @@
+#include <iostream>
+#include <vector>
+#include <queue>
+
+typedef int weight_t;
+struct Edge {
+    int from;
+    int to;
+    weight_t flow;
+    weight_t capacity;
+    unsigned long back;
+};
+
+typedef std::vector<std::vector<Edge>> Graph;
+
+std::vector<int> CanBuildResidualNetwork(int start, int finish, const Graph &graph) {
+    const int have_not_seen = -1;
+    std::vector<int> level(graph.size(), have_not_seen);
+    level[start] = 0;
+    std::queue<int> tops;
+    tops.push(start);
+    while (!tops.empty()) {
+        const auto now_top = tops.front();
+        tops.pop();
+        for (auto edge : graph[now_top]) {
+            if (level[edge.to] == have_not_seen && edge.flow < edge.capacity) {
+                level[edge.to] = level[now_top] + 1;
+                tops.push(edge.to);
+            }
+        }
+    }
+    return level;
+}
+
+int FindFlow(Graph &graph, int top, int finish, int flow,
+             std::vector<int> &counter_of_edge,
+             const std::vector<int> &level) {
+    if (top == finish) {
+        return flow;
+    }
+    while (counter_of_edge[top] < graph[top].size()) {
+        Edge &cur_edge = graph[top][counter_of_edge[top]];
+        Edge &back_edge = graph[cur_edge.to][cur_edge.back];
+        if (level[cur_edge.to] == level[top] + 1 &&
+                cur_edge.flow < cur_edge.capacity) {
+            const auto residual_capacity = std::min(flow,
+                                                    cur_edge.capacity - cur_edge.flow);
+            int discovered_flow = FindFlow(graph, cur_edge.to, finish, residual_capacity,
+                                           counter_of_edge,
+                                           level);
+            if (discovered_flow > 0) {
+                cur_edge.flow += discovered_flow;
+                back_edge.flow -= discovered_flow;
+                return discovered_flow;
+            }
+        }
+        ++counter_of_edge[top];
+    }
+    return 0;
+}
+
+int MaxFlow(int start, int finish, Graph &graph) {
+    const int max_flow = 1000000;
+    const int size = graph.size();
+    if (start == finish) {
+        return -1;
+    }
+    int result = 0;
+    std::vector<int> level = CanBuildResidualNetwork(start, finish, graph);
+    while (level[finish] >= 0) {
+        std::vector<int> counter_of_edge(size + 1, 0);
+        int flow = FindFlow(graph, start, finish, max_flow, counter_of_edge, level);
+        do {
+            result += flow;
+            flow = FindFlow(graph, start, finish, max_flow, counter_of_edge, level);
+        } while (flow != 0);
+    }
+    return result;
+}
+
+int main() {
+    int n, m;
+    std::cin >> n >> m;
+    Graph graph(n);
+    for (int i = 0; i < m; ++i) {
+        int from, to, weight;
+        std::cin >> from >> to >> weight;
+        graph[from - 1].push_back(Edge{from - 1, to - 1, 0, weight, graph[to].size()});
+        graph[to - 1].push_back(Edge{to - 1, from - 1, 0, 0, graph[from].size() - 1});
+    }
+
+    int answer = MaxFlow(0, n - 1, graph);
+    std::cout << answer;
+}

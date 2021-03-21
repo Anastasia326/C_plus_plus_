@@ -1,0 +1,48 @@
+#include <algorithm>
+#include <vector>
+#include <bit>
+#include <bitset>
+#include <iostream>
+
+size_t PowTwo(size_t i) {
+    return 1u << (i - 1);
+}
+
+template<typename Element>
+class MinOperation {
+    const Element kNeutral = 1000000001;
+public:
+    Element operator()(const Element &first, const Element &second) const {
+        return (first > second) ? second : first;
+    }
+};
+
+template<class Element, class Operation>
+class SparseTable {
+    std::vector<std::vector<Element>> table_;
+
+    static size_t CountLog(size_t element) {
+        return std::bit_floor(element);
+    }
+
+public:
+    explicit SparseTable(const std::vector<Element> &array) {
+        const auto size = array.size();
+        const auto size_of_table = CountLog(size) + 1;
+        table_[0] = array;
+        for (size_t i = 1; i < size_of_table; ++i) {
+            size_t offset = PowTwo(i);
+            table_.emplace_back();
+            for (size_t j = 0; j + offset < size; ++j) {
+                table_.back().push_back(
+                        Operation(table_[i - 1][j], table_[i - 1][j + (1 << (i - 1))]));
+            }
+        }
+    }
+
+    Element GetMin(size_t left, size_t right) const {
+        const auto Log = CountLog(right - left + 1);
+        return Operation(table_[Log][left], table_[Log][right - (1 << Log) + 1]);
+    }
+
+};

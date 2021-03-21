@@ -1,0 +1,225 @@
+#ifndef VECTOR_H
+#define VECTOR_H
+
+#include <cctype>
+#include <cstdlib>
+
+using std::size_t;
+
+template <typename T>
+void MySwap(T& first, T& second) {
+    T tmp = first;
+    first = second;
+    second = tmp;
+}
+
+template <class T>
+static void Copy(const T* origin, T* dest, const size_t end) {
+    for (size_t i = 0; i < end; ++i) {
+        dest[i] = origin[i];
+    }
+}
+
+template <typename T>
+void Fill(size_t start, size_t end, const T& symbol, T* arr) {
+    for (size_t i = start; i < end; ++i) {
+        arr[i] = symbol;
+    }
+}
+
+template <typename T>
+class Vector {
+    T* buffer_;
+    size_t size_;
+    size_t capacity_;
+
+    void Reallocate(size_t size_new) {
+        T *buffer_new = new T[size_new];
+        Copy(buffer_, buffer_new, size_);
+        delete[] buffer_;
+        buffer_ = buffer_new;
+        capacity_ = size_new;
+    }
+    const static size_t kIncreaseFactor = 2;
+
+public:
+    void Resize(size_t new_size) {
+        Resize(new_size, T());
+    }
+
+    void Resize(size_t new_size,const T& symbol) {
+        if (size_ < new_size && new_size <= capacity_) {
+            Fill(size_, new_size - size_, symbol , buffer_);
+        } else if (new_size > capacity_) {
+            Reserve(new_size);
+            Fill(size_, new_size - size_, symbol , buffer_);
+        }
+        size_ = new_size;
+    }
+
+    void Reserve(size_t new_cap) {
+        if (capacity_ < new_cap) {
+            Reallocate(new_cap);
+        }
+    }
+
+    void Swap(Vector<T>& other) {
+        MySwap(size_, other.size_);
+        MySwap(capacity_, other.capacity_);
+        MySwap(buffer_, other.buffer_);
+    }
+
+    Vector() : size_(0), capacity_(0), buffer_(nullptr) {
+    }
+
+    explicit Vector(size_t size_new) : size_(size_new), capacity_(size_new) {
+        buffer_ = new T[size_new]();
+    }
+
+    Vector(size_t size_new, const T& symbol): Vector(size_new) {
+        Fill(0, size_, symbol , buffer_);
+    }
+
+    Vector(const Vector<T>& other) {
+        capacity_ = other.capacity_;
+        size_ = other.size_;
+        buffer_ = new T[capacity_];
+        Copy(other.buffer_, buffer_, size_);
+    }
+
+    Vector& operator=(Vector other) {
+        Swap(other);
+        return *this;
+    }
+
+    ~Vector() {
+        delete[] buffer_;
+    }
+
+    void Clear() {
+        size_ = 0;
+    }
+
+    void PushBack(const T& symbol) {
+        if (capacity_ == 0) {
+            Reserve(1);
+        }
+        if (capacity_ <= size_){
+            Reserve(capacity_ * kIncreaseFactor);
+        }
+        size_ += 1;
+        buffer_[size_ - 1] = symbol;
+    }
+
+    void PopBack() {
+        if (size_ > 0) {
+            --size_;
+        }
+    }
+
+    void ShrinkToFit() {
+        if (capacity_ > size_) {
+            Reallocate(size_);
+        }
+    }
+
+    T operator[](size_t i) const{
+        return buffer_[i];
+    }
+
+    T& operator[](size_t i) {
+        return buffer_[i];
+    }
+
+     T Back() const {
+        return buffer_[size_ - 1];
+    }
+
+     T Front() const {
+        return buffer_[0];
+    }
+
+     T& Back()  {
+        return buffer_[size_ - 1];
+    }
+
+     T& Front()  {
+        return buffer_[0];
+    }
+
+    bool Empty() const {
+        return size_ == 0;
+    }
+
+    const T* Data() const {
+        return buffer_;
+    }
+
+     T* Data() {
+        return buffer_;
+    }
+
+    size_t Size() const {
+        return size_;
+    }
+
+    size_t Capacity() const {
+        return capacity_;
+    }
+
+};
+template <typename T>
+const T Min(const T& first, const T& second) {
+    return (first < second) ? first : second;
+}
+
+template <typename T>
+bool operator==(const Vector<T>& string_first, const Vector<T>& string_second) {
+    if(string_first.Size() != string_second.Size()){
+        return false;
+    }
+    for (size_t i = 0; i < string_second.Size(); ++i) {
+        if (string_first[i] != string_second[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+
+template <typename T>
+bool operator>(const Vector<T>& first, const Vector<T>& second) {
+    size_t min_size = Min(first.Size(), second.Size());
+    for (size_t i = 0; i < min_size; ++i) {
+        if (first[i] > second[i]) {
+            return true;
+        } else if (first[i] < second[i]) {
+            return false;
+        }
+    }
+    return first.Size() > second.Size();
+}
+
+template <typename T>
+bool operator<(const Vector<T>& string_first, const Vector<T>& string_second) {
+    return string_second > string_first;
+}
+
+template <typename T>
+bool operator<=(const Vector<T>& string_first, const Vector<T>& string_second) {
+    return !(string_first > string_second);
+}
+
+template <typename T>
+bool operator>=(const Vector<T>& string_first, const Vector<T>& string_second) {
+    return !(string_first < string_second);
+}
+
+template <typename T>
+bool operator!=(const Vector<T>& string_first, const Vector<T>& string_second) {
+    return !(string_first == string_second);
+}
+
+
+#endif // VECTOR_H
+

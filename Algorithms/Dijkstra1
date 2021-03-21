@@ -1,0 +1,53 @@
+#include <iostream>
+#include <vector>
+#include <set>
+#include <algorithm>
+
+std::vector<int> Distance(const std::vector<std::vector<std::pair<int, int>>> &graph, int start) {
+    const int max_size = 2009000999;
+    const int size = graph.size();
+    std::vector<int> distance(size, max_size);
+    std::vector<int> previous(size);
+    distance[start] = 0;
+    std::set<std::pair<int, int>> set;
+    set.insert({distance[start], start});
+    while (!set.empty()) {
+        int now_top = set.begin()->second;
+        set.erase(set.begin());
+        for (int i = 0; i < graph[now_top].size(); ++i) {
+            int next_top = graph[now_top][i].first, weight = graph[now_top][i].second;
+            if(distance[now_top] + weight < distance[next_top]) {
+                set.erase({distance[next_top], next_top});
+                distance[next_top] = distance[now_top] + weight;
+                previous[next_top] = now_top;
+                set.insert({distance[next_top], next_top});
+            }
+        }
+    }
+    return distance;
+}
+
+int main() {
+    std::ios_base::sync_with_stdio(false);
+    int block;
+    std::cin >> block;
+    for (int i = 1; i <= block; ++i) {
+        int n, m;
+        std::cin >> n >> m;
+        std::vector<std::vector<std::pair<int, int>>> graph(n);
+        for (int j = 0; j < m; ++j) {
+            int top, neighbour, weight;
+            std::cin >> top >> neighbour >> weight;
+            graph[top].push_back({neighbour, weight});
+            graph[neighbour].push_back({top, weight});
+        }
+        int start;
+        std::cin >> start;
+        std::vector<int> answer = Distance(graph, start);
+        for (int j = 0; j < n; ++j) {
+            std::cout << answer[j] << " ";
+        }
+        std::cout << '\n';
+    }
+}
+

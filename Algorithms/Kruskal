@@ -1,0 +1,94 @@
+#include <iostream>
+#include <vector>
+#include <algorithm>
+
+using elem_t = int;
+
+struct Edge {
+    int weight;
+    int top;
+    int neighbour;
+};
+
+class Dsu {
+    mutable std::vector<elem_t> predecessors_;
+    std::vector<size_t> ranks_;
+
+public:
+    explicit Dsu(size_t n_sets);
+
+    elem_t MakeSet();
+
+    elem_t FindSet(elem_t x) const;
+
+    void Union(elem_t x, elem_t y);
+};
+
+Dsu::Dsu(size_t n_sets) : predecessors_(n_sets), ranks_(n_sets, 0) {
+    for (elem_t i = 0; i < n_sets; ++i) {
+        predecessors_[i] = i;
+    }
+}
+
+elem_t Dsu::MakeSet() {
+    predecessors_.push_back(predecessors_.size());
+    ranks_.push_back(0);
+    return predecessors_.size() - 1;
+}
+
+elem_t Dsu::FindSet(elem_t x) const {
+    if (predecessors_[x] == x) {
+        return x;
+    }
+    predecessors_[x] = FindSet(predecessors_[x]);
+    return predecessors_[x];
+}
+
+void Dsu::Union(elem_t x, elem_t y) {
+    x = FindSet(x);
+    y = FindSet(y);
+    if (ranks_[x] < ranks_[y]) {
+        predecessors_[x] = y;
+    } else if (ranks_[y] < ranks_[x]) {
+        predecessors_[y] = x;
+    } else {
+        ++ranks_[x];
+        predecessors_[y] = x;
+    }
+}
+
+std::vector<Edge> Kruskal(std::vector<Edge> graph, size_t number_of_vertex) {
+    std::sort(graph.begin(), graph.end(), [](const Edge& first, const Edge &second) {
+        return first.weight < second.weight;
+    });
+    Dsu dsu(number_of_vertex);
+    std::vector<Edge> answer;
+    const auto number_of_edges = graph.size();
+    for (auto [weight, top, neighbour] : graph) {
+        if (dsu.FindSet(neighbour) != dsu.FindSet(top)) {
+            answer.emplace_back(Edge{weight, top, neighbour}); //на answer.emplace_back({weight, top, neighbor}) компилятор ругается
+            dsu.Union(top, neighbour);
+        }
+    }
+    return answer;
+}
+
+int main() {
+    std::ios_base::sync_with_stdio(false);
+    int n, m;
+    std::cin >> n >> m;
+    std::vector<Edge> graph;
+    for (int i = 0; i < m; ++i) {
+        int top, neighbor, weight;
+        std::cin >> top >> neighbor >> weight;
+        graph.push_back(Edge{weight, top - 1, neighbor - 1});
+    }
+    int counter = 0;
+    std::vector<Edge> answer = Kruskal(graph, n);
+    for(auto edge: answer) {
+        counter += edge.weight;
+    }
+    std::cout << counter;
+    return 0;
+}
+

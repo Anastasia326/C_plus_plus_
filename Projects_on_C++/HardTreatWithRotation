@@ -1,0 +1,589 @@
+#include <iostream>
+#include <vector>
+#include <set>
+#include <algorithm>
+#include <random>
+
+struct Element {
+    long long int elem;
+    long long int position;
+};
+
+template<class ElemT, class PriorityT>
+class Treap {
+private:
+    struct Node {
+        PriorityT priority;
+        long long size;
+        ElemT value;
+        ElemT sum;
+        bool promise_change = false;
+        bool reversed = false;
+        long long add;
+        long long change;
+        ElemT left_elem;
+        ElemT right_elem;
+        long long int suf_next = 1;
+        long long int pref_next = 1;
+        long long int suf_prev = 1;
+        long long int pref_prev = 1;
+        Node *left = nullptr;
+        Node *right = nullptr;
+        Node *parent = nullptr;
+
+        explicit Node(const ElemT &my_value, PriorityT &prior) : priority(prior), size(1),
+                                                                 value(my_value),
+                                                                 sum(my_value), change(0), add(0),
+                                                                 left_elem(my_value),
+                                                                 right_elem(my_value) {
+        }
+
+    };
+
+    Node *root_ = nullptr;
+
+    static long long SizeOf(Node *node) {
+        return node == nullptr ? 0 : node->size;
+    }
+
+    static ElemT GetSumLeft(Node *node) {
+        return node->left ? node->left->sum : 0;
+    }
+
+    static ElemT GetSumRight(Node *node) {
+        return node->right ? node->right->sum : 0;
+    }
+
+    static ElemT GetSum(Node *node) {
+        return GetSumLeft(node) + GetSumRight(node) + node->value;
+    }
+
+    static void SetLeft(Node *treap, Node *left) {
+        if (treap != nullptr) {
+            treap->left = left;
+        }
+        if (left != nullptr) {
+            left->parent = treap;
+        }
+        UpdateNode(treap);
+    }
+
+    static void SetRight(Node *treap, Node *right) {
+        if (treap != nullptr) {
+            treap->right = right;
+        }
+        if (right != nullptr) {
+            right->parent = treap;
+        }
+        UpdateNode(treap);
+    }
+
+    static std::pair<Node *, Node *> SplitByValue(Node *node, ElemT value) {
+        if (node == nullptr) {
+            return {nullptr, nullptr};
+        }
+        Push(node);
+        if (node->value + node->add <= value) {
+            auto[less_tree, ge_tree] = SplitByValue(node->right, value);
+            SetRight(node, less_tree);
+            return {node, ge_tree};
+        } else {
+            auto[less_tree, ge_tree] = SplitByValue(node->left, value);
+            SetLeft(node, ge_tree);
+            return {less_tree, node};
+        }
+    }
+
+    static std::pair<Node *, Node *> Split(Node *root, long long int x) {
+        if (root == nullptr) {
+            return {nullptr, nullptr};
+        }
+        Push(root);
+        if (SizeOf(root->left) < x) {
+            auto[less_tree, ge_tree] = Split(root->right,
+                                             x - SizeOf(root->left) - 1);
+            SetRight(root, less_tree);
+            return {root, ge_tree};
+        } else {
+            auto[less_tree, ge_tree] = Split(root->left, x);
+            SetLeft(root, ge_tree);
+            return {less_tree, root};
+        }
+    }
+
+    static Node *Merge(Node *left, Node *right) {
+        Push(left);
+        Push(right);
+        if (left == nullptr) {
+            return right;
+        }
+        if (right == nullptr) {
+            return left;
+        }
+        if (left->priority < right->priority) {
+            Node *node = Merge(left, right->left);
+            SetLeft(right, node);
+            return right;
+        } else {
+            Node *node = Merge(left->right, right);
+            SetRight(left, node);
+            return left;
+        }
+    }
+
+    static void Clean(Node *node) {
+        if (node != nullptr) {
+            if (node->left != nullptr) {
+                Clean(node->left);
+            }
+            if (node->right != nullptr) {
+                Clean(node->right);
+            }
+            delete node;
+        }
+    }
+
+    static void PushChild(Node *child, Node *node) {
+        child->promise_change = true;
+        long long delta = node->change + node->add;
+        child->change = delta;
+        child->value = delta;
+        child->right_elem = delta;
+        child->left_elem = delta;
+        child->sum = delta * SizeOf(child);
+        long long size = SizeOf(child);
+        child->suf_next = size;
+        child->suf_prev = size;
+        child->pref_next = size;
+        child->pref_prev = size;
+        child->add = 0;
+    }
+
+    static void PushForReverse(Node *node) {
+        if (node == nullptr) {
+            return;
+        }
+        if (node->reversed) {
+            node->reversed = false;
+            if (node->left != nullptr) {
+                node->left->reversed ^= true;
+            }
+            if (node->right != nullptr) {
+                node->right->reversed ^= true;
+            }
+            std::swap(node->left, node->right);
+            std::swap(node->suf_next, node->pref_next);
+            std::swap(node->suf_prev, node->pref_prev);
+            std::swap(node->right_elem, node->left_elem);
+        }
+    }
+
+    static void Push(Node *node) {
+        //все так же O(logN), мы просто делаем несколько Push,
+        // чтобы легче было понимать, что обновилось
+        if (node != nullptr) {
+            if (node->promise_change) {
+                node->promise_change = false;
+                if (node->left != nullptr) {
+                    //проталкиваем в ребенке, чтобы сразу внем хранить информацию о дальнейшем исправлении
+                    PushChild(node->left, node);
+                }
+                if (node->right != nullptr) {
+                    PushChild(node->right, node);
+                }
+                long long delta = node->add;
+                node->value += delta;
+                node->left_elem += delta;
+                node->right_elem += delta;
+                node->sum += node->size * delta;
+                node->add = 0;
+                long long size = SizeOf(node);
+                node->suf_prev = size;
+                node->suf_next = size;
+                node->pref_prev = size;
+                node->pref_next = size;
+            } else {
+                node->sum = node->sum + node->add * node->size;
+                node->value += node->add;
+                node->left_elem += node->add;
+                node->right_elem += node->add;
+                if (node->left != nullptr) {
+                    node->left->add += node->add;
+                }
+                if (node->right != nullptr) {
+                    node->right->add += node->add;
+                }
+                node->add = 0;
+            }
+            PushForReverse(node);
+        }
+    }
+
+    static void RecalculateSumAndSize(Node *node) {
+        if (node != nullptr) {
+            node->size = SizeOf(node->left) + SizeOf(node->right) + 1;
+            node->right_elem = node->value;
+            node->left_elem = node->value;
+            node->sum = node->value;
+            if (node->right != nullptr) {
+                node->right_elem = node->right->right_elem;
+                node->sum += node->right->sum + node->right->add * SizeOf(node->right);
+            }
+            if (node->left != nullptr) {
+                node->left_elem = node->left->left_elem;
+                node->sum += node->left->sum + node->left->add * SizeOf(node->left);
+            }
+        }
+    }
+
+    static void
+    CountPreFunctions(long long int &what_count, Node *first, Node *second, ElemT parent_first,
+                      ElemT child_first, ElemT parent_second, ElemT child_second,
+                      long long int delta) {
+        if (what_count == SizeOf(first) && (first == nullptr || parent_first >= child_first)) {
+            ++what_count;
+            if ((second != nullptr) && (parent_second >= child_second)) {
+                what_count += delta;
+            }
+        }
+    }
+
+    static void UpdatePreFunctions(Node *node) {
+        if (node != nullptr) {
+            node->suf_next = 0;
+            node->suf_prev = 0;
+            node->pref_prev = 0;
+            node->pref_next = 0;
+            node->suf_next = ((node->right != nullptr) ? node->right->suf_next : node->suf_next);
+            node->suf_prev = ((node->right != nullptr) ? node->right->suf_prev : node->suf_prev);
+            node->pref_next = ((node->left != nullptr) ? node->left->pref_next : node->pref_next);
+            node->pref_prev = ((node->left != nullptr) ? node->left->pref_prev : node->pref_prev);
+        }
+    }
+
+    static void UpdateNode(Node *node) {
+        if (node != nullptr) {
+            Push(node->left);
+            Push(node->right);
+            RecalculateSumAndSize(node);
+            UpdatePreFunctions(node);
+            CountPreFunctions(node->suf_next, node->right, node->left, node->value,
+                              (node->right ? node->right->left_elem : 0),
+                              (node->left ? node->left->right_elem : 0), node->value,
+                              (node->left ? node->left->suf_next : 0));
+            CountPreFunctions(node->suf_prev, node->right, node->left,
+                              (node->right ? node->right->left_elem : 0), node->value, node->value,
+                              (node->left ? node->left->right_elem : 0),
+                              (node->left ? node->left->suf_prev : 0));
+            CountPreFunctions(node->pref_next, node->left, node->right, node->value,
+                              (node->left ? node->left->right_elem : 0),
+                              (node->right ? node->right->left_elem : 0), node->value,
+                              (node->right ? node->right->pref_next : 0));
+            CountPreFunctions(node->pref_prev, node->left, node->right,
+                              (node->left ? node->left->right_elem : 0), node->value, node->value,
+                              (node->right ? node->right->left_elem : 0),
+                              (node->right ? node->right->pref_prev : 0));
+        }
+    }
+
+    Node *Reverse(Node *node, long long left, long long right) {
+        if (node == nullptr) {
+            return node;
+        }
+        auto[less_tree, ge_tree] = Split(node, left - 1);
+        auto[equal_tree, greater_tree] = Split(ge_tree, right - left + 1);
+        equal_tree->reversed ^= true;
+        return Merge(less_tree, Merge(equal_tree, greater_tree));
+    }
+
+
+    Node *AddOnPiece(Node *node, long long left, long long right, long long int delta) {
+        if (node == nullptr) {
+            return node;
+        }
+        auto[less_tree, ge_tree] = Split(node, left - 1);
+        auto[equal_tree, greater_tree] = Split(ge_tree, right - left + 1);
+        equal_tree->add += delta;
+        return Merge(less_tree, Merge(equal_tree, greater_tree));
+    }
+
+    Node *ChangeOnPiece(Node *node, long long left, long long right, long long int new_value) {
+        if (node == nullptr) {
+            return node;
+        }
+        auto[less_tree, ge_tree] = Split(node, left - 1);
+        auto[equal_tree, greater_tree] = Split(ge_tree, right - left + 1);
+        equal_tree->value = new_value;
+        equal_tree->left_elem = new_value;
+        equal_tree->right_elem = new_value;
+        equal_tree->promise_change = true;
+        equal_tree->change = new_value;
+        equal_tree->sum = (right - left + 1) * new_value;
+        long long size = SizeOf(equal_tree);
+        equal_tree->pref_prev = size;
+        equal_tree->pref_next = size;
+        equal_tree->suf_next = size;
+        equal_tree->add = 0;
+        return Merge(less_tree, Merge(equal_tree, greater_tree));
+    }
+
+    std::pair<long long int, Node *> Sum(Node *node, long long left, long long right) {
+        auto[less_tree, ge_tree] = Split(node, left - 1);
+        auto[equal_tree, greater_tree] = Split(ge_tree, right - left + 1);
+        long long result = equal_tree->sum;
+        return {result, Merge(less_tree, Merge(equal_tree, greater_tree))};
+    }
+
+    Node *Insert(Node *root, PriorityT position, ElemT x, long long index) {
+        Node *new_node = new Node(x, position);
+        if (root == nullptr) {
+            return new_node;
+        }
+        auto[less_tree, ge_tree] = Split(root, index);
+        return Merge(Merge(less_tree, new_node), ge_tree);
+    }
+
+    Node *Delete(Node *node, long long position) {
+        if (node == nullptr) {
+            return node;
+        }
+        auto[less_tree, ge_tree] = Split(node, position);
+        auto[equal_tree, greater_tree] = Split(ge_tree, 1);
+        delete equal_tree;
+        return Merge(less_tree, greater_tree);
+    }
+
+    struct CutTreaps {
+        Node *less_tree;
+        Node *ge_tree;
+        Node *equal_tree;
+        Node *greater_tree;
+    };
+
+    enum PrevOrNext {
+        next,
+        prev
+    };
+
+    std::pair<bool, Node *> NeedOnlyReverse(Node *node, PrevOrNext prev_or_next) {
+        int suf;
+        if (prev_or_next) {
+            suf = node->suf_prev;
+        } else {
+            suf = node->suf_next;
+        }
+        if (suf == SizeOf(node)) {
+            return {true, Reverse(node, 1, SizeOf(node))};
+        }
+        return {false, node};
+    }
+
+    CutTreaps CutForPermutation(Node *node, PrevOrNext prev_or_next) {
+        int suf;
+        if (prev_or_next) {
+            suf = node->suf_prev;
+        } else {
+            suf = node->suf_next;
+        }
+        auto[less_tree, ge_tree] = Split(node, SizeOf(node) - suf - 1);
+        auto[equal_tree, greater_tree] = Split(ge_tree, 1);
+        return {less_tree, ge_tree, equal_tree, greater_tree};
+    }
+
+    void TotalMerge(Node *who_change, Node *result, Node *first, Node *second, Node *third,
+                    Node *fourth) {
+        result = Merge(result, first);
+        result = Merge(result, second);
+        result = Merge(result, third);
+        result = Merge(result, fourth);
+        who_change = result;
+    }
+
+    Node *NextPermutation(Node *node, long long left, long long right) {
+        if (node == nullptr) {
+            return node;
+        }
+        auto[less_tree, ge_tree] = Split(node, left - 1);
+        auto[equal_tree, greater_tree] = Split(ge_tree, right - left + 1);
+        std::pair<bool, Node *> pair = NeedOnlyReverse(equal_tree, next);
+        if (pair.first) {
+            equal_tree = pair.second;
+            return Merge(less_tree, Merge(equal_tree, greater_tree));
+        }
+        auto[less_tree_in_cut, ge_tree_in_cut, equal_tree_in_cut, greater_tree_in_cut]  = CutForPermutation(
+                equal_tree, next);
+        greater_tree_in_cut = Reverse(greater_tree_in_cut, 1,
+                                      SizeOf(greater_tree_in_cut));
+        auto[less_tree_value, ge_tree_value] = SplitByValue(greater_tree_in_cut,
+                                                            equal_tree_in_cut->value);
+        auto[equal_tree_value, greater_tree_value] = Split(ge_tree_value, 1);
+        TotalMerge(equal_tree, less_tree_in_cut, equal_tree_value, less_tree_value,
+                   equal_tree_in_cut, greater_tree_value);
+        return Merge(less_tree, Merge(equal_tree, greater_tree));
+    }
+
+    Node *PrevPermutation(Node *node, long long left, long long right) {
+        if (node == nullptr) {
+            return node;
+        }
+        auto[less_tree, ge_tree] = Split(node, left - 1);
+        auto[equal_tree, greater_tree] = Split(ge_tree, right - left + 1);
+        std::pair<bool, Node *> pair = NeedOnlyReverse(equal_tree, prev);
+        if (pair.first) {
+            equal_tree = pair.second;
+            return Merge(less_tree, Merge(equal_tree, greater_tree));
+        }
+        auto[less_tree_in_cut, ge_tree_in_cut, equal_tree_in_cut, greater_tree_in_cut] = CutForPermutation(
+                equal_tree, prev);
+        auto[less_tree_value, ge_tree_value] = SplitByValue(greater_tree_in_cut,
+                                                            equal_tree_in_cut->value -
+                                                            1);
+        auto[equal_tree_value, greater_tree_value] = Split(less_tree_value,
+                                                           SizeOf(less_tree_value) - 1);
+        equal_tree_value = Reverse(equal_tree_value, 1, SizeOf(equal_tree_value));
+        equal_tree_in_cut = Reverse(equal_tree_in_cut, 1,
+                                    SizeOf(equal_tree_in_cut));
+        ge_tree_value = Reverse(ge_tree_value, 1, SizeOf(ge_tree_value));
+        TotalMerge(equal_tree, less_tree_in_cut, greater_tree_value, ge_tree_value,
+                   equal_tree_in_cut, equal_tree_value);
+        return Merge(less_tree, Merge(equal_tree, greater_tree));
+    }
+
+    Node *CopyLeaf(const Node *other) {
+        return (other != nullptr) ? new Node(other->key, other->priority) : nullptr;
+    }
+
+    Node *CopyTree(const Node *other) {
+        if (other == nullptr) {
+            return nullptr;
+        }
+        Node *root = CopyLeaf(other);
+        root->left = CopyTree(other->left);
+        root->right = CopyTree(other->right);
+        return root;
+    }
+
+public:
+    Treap() : root_(nullptr) {
+    }
+
+    explicit Treap(const std::vector<Element> &values) {
+        for (auto value : values) {
+            Node *node = new Node(value.elem, value.position);
+            root_ = Merge(root_, node);
+        }
+    }
+
+    Treap(const Treap &other) {
+        this->root_ = CopyTree(other);
+    }
+
+    Treap &operator=(const Treap &other) {
+        Treap copy(other);
+        std::swap(*this, copy);
+        return *this;
+    }
+
+    void Insert(PriorityT position, ElemT x, long long index) {
+        root_ = Insert(root_, position, x, index);
+    }
+
+    void Delete(long long position) {
+        root_ = Delete(root_, position);
+    }
+
+    long long SumForUser(long long left, long long right) {
+        std::pair<long long int, Node *> answer = Sum(root_, left, right);
+        root_ = answer.second;
+        return answer.first;
+    }
+
+    void Change(long long left, long long right, long long int new_value) {
+        root_ = ChangeOnPiece(root_, left, right, new_value);
+    }
+
+    void AddOnPieceForUser(long long left, long long right, long long int delta) {
+        root_ = AddOnPiece(root_, left, right, delta);
+    }
+
+    void NextPermutationForUser(long long left, long long right) {
+        root_ = NextPermutation(root_, left, right);
+    }
+
+    void PrevPermutationGorUser(long long left, long long right) {
+        root_ = PrevPermutation(root_, left, right);
+    }
+
+    ~Treap() {
+        Clean(root_);
+    }
+
+    void Draw(Node *node) {
+        if (node == nullptr) {
+            return;
+        }
+        Push(node);
+        Draw(node->left);
+        std::cout << node->value << " ";
+        Draw(node->right);
+    }
+
+    void Draw() {
+        Draw(root_);
+    }
+
+
+};
+
+
+int main() {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> distrib(1, 1000000000);
+    long long int n;
+    std::cin >> n;
+    std::vector<Element> values;
+    for (long long int i = 0; i < n; ++i) {
+        long long int elem;
+        std::cin >> elem;
+        values.push_back({elem, distrib(gen)});
+    }
+    Treap<long long int, long long int> treap(values);
+    long long int q;
+    std::cin >> q;
+    long long int query;
+    for (long long int i = 0; i < q; ++i) {
+        std::cin >> query;
+        if (query == 1) {
+            long long int left, right;
+            std::cin >> left >> right;
+            std::cout << treap.SumForUser(left + 1, right + 1) << "\n";
+        } else if (query == 2) {
+            long long int x, position;
+            std::cin >> x >> position;
+            treap.Insert(distrib(gen), x, position);
+        } else if (query == 3) {
+            long long int position;
+            std::cin >> position;
+            treap.Delete(position);
+        } else if (query == 4) {
+            long long int x, left, right;
+            std::cin >> x >> left >> right;
+            treap.Change(left + 1, right + 1, x);
+        } else if (query == 5) {
+            long long int x, left, right;
+            std::cin >> x >> left >> right;
+            treap.AddOnPieceForUser(left + 1, right + 1, x);
+        } else if (query == 6) {
+            long long int left, right;
+            std::cin >> left >> right;
+            treap.NextPermutationForUser(left + 1, right + 1);
+        } else if (query == 7) {
+            long long int left, right;
+            std::cin >> left >> right;
+            treap.PrevPermutationGorUser(left + 1, right + 1);
+        }
+    }
+    treap.Draw();
+    std::cout << '\n';
+}

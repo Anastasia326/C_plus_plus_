@@ -1,0 +1,580 @@
+#include <cstring>
+#include <cmath>
+#include <cstdio>
+#include <iostream>
+#include <iomanip>
+
+class BigIntegerOverflow {
+public:
+    BigIntegerOverflow() = default;
+};
+
+class BigInteger {
+private:
+    const static size_t maxLength = 3000; // number of digits
+    const static uint8_t baseLog = 9; // use 1 or 2 for debug
+    typedef uint32_t digit_type;
+    typedef uint64_t double_digit_type; // for multiplication
+    const static uint32_t base = static_cast<digit_type>(std::pow(10, baseLog));  // base of numeral system
+    const static size_t maxReadSize = 20010; // for reading (buffer size)
+    digit_type digits[maxLength]{};
+    bool is_negative;
+
+public:
+    BigInteger();
+
+    template <class T>
+    BigInteger(T value);
+
+    BigInteger(std::string str);
+
+    BigInteger(const char* str);
+
+    size_t Size() const;
+
+    digit_type GetBuffer(int i) const;
+
+    bool IsNegative() const;
+
+    size_t MaxLength() const;
+
+    BigInteger& operator+=(const BigInteger& other);
+
+    BigInteger& operator-=(const BigInteger& other);
+
+    BigInteger& operator*=(const BigInteger& other);
+
+    BigInteger& operator/=(const BigInteger& other);
+
+    BigInteger& operator%=(const BigInteger& other);
+
+    template <class T>
+    BigInteger&operator/=(T value);
+
+    BigInteger& operator--();
+
+    BigInteger& operator++();
+
+    BigInteger operator--(int);
+
+    BigInteger operator++(int);
+
+    BigInteger operator -() const;
+
+    ~BigInteger() = default;
+
+};
+std::istream& operator>>(std::istream& stream, BigInteger& bigInt);
+
+std::ostream& operator<<(std::ostream& stream, const BigInteger& bigInt);
+
+BigInteger operator+(const BigInteger& str_first, const BigInteger& str_second);
+
+BigInteger operator-(const BigInteger& str_first, const BigInteger& str_second);
+
+BigInteger operator*(const BigInteger& str_first, const BigInteger& str_second);
+
+BigInteger operator/(const BigInteger& str_first, const BigInteger& str_second);
+
+BigInteger operator%(const BigInteger& str_first, const BigInteger& str_second);
+
+bool operator==(const BigInteger& str_first, const BigInteger& str_second);
+
+bool operator>(const BigInteger& str_first, const BigInteger& str_second);
+
+bool operator<(const BigInteger& number_first, const BigInteger& number_second);
+
+bool operator>=(const BigInteger& number_first, const BigInteger& number_second);
+
+bool operator<=(const BigInteger& number_first, const BigInteger& number_second);
+
+bool operator!=(const BigInteger& number_first, const BigInteger& number_second);
+
+size_t BigInteger::MaxLength() const {
+    return maxLength;
+}
+
+bool BigInteger::IsNegative() const {
+    return is_negative;
+}
+
+bool ModuloComparison(const BigInteger& first, const BigInteger& other) {
+    if (first.Size() < other.Size()) {
+        return false;
+    } else if(first.Size() > other.Size()) {
+        return true;
+    }
+    for (size_t i = first.MaxLength(); i > 0; --i) {
+        if (first.GetBuffer(i - 1) < other.GetBuffer(i - 1)) {
+            return false;
+        }
+        if (first.GetBuffer(i - 1) > other.GetBuffer(i - 1)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+BigInteger::BigInteger() {
+    for (size_t i = 0; i < maxLength; ++i) {
+        digits[i] = 0;
+    }
+    is_negative = false;
+}
+
+template <class T>
+BigInteger::BigInteger(T value) {
+    if (value < 0) {
+        is_negative = true;
+        value = -value;
+    } else {
+        is_negative = false;
+    }
+    size_t i = 0;
+    while (value != 0) {
+        digits[i] = value % BigInteger::base;
+        value /= BigInteger::base;
+        ++i;
+        if (i > BigInteger::maxLength) {
+            BigIntegerOverflow ex;
+            throw ex;
+        }
+    }
+}
+
+BigInteger::BigInteger(std::string str) {
+    digit_type now_value = 0;
+    digit_type j = 0;
+    digit_type sign = 0;
+    is_negative = str[0] == '-';
+    if (is_negative) {
+        sign = 1;
+    }
+    digit_type k = (str.size() - sign)/9 - 1;
+    for (size_t i = sign + (str.size() - sign) % 9; i < str.size(); ++i) {
+        now_value = now_value * 10 + (str[i] - '0');
+        ++j;
+        if (j == 9) {
+            digits[k] = now_value;
+            --k;
+            j = 0;
+            now_value = 0;
+        }
+    }
+    for (size_t i = sign ; i < sign + (str.size() - sign) % 9; ++i) {
+        now_value = now_value * 10 + (str[i] - '0');
+        ++j;
+    }
+    digits[(str.size() - sign)/9] = now_value;
+}
+
+BigInteger::digit_type BigInteger::GetBuffer(int i) const {
+    return digits[i];
+}
+
+BigInteger::BigInteger(const char* str) {
+    *this = BigInteger(std::string(str));
+}
+
+size_t BigInteger::Size() const {
+    size_t size = maxLength;
+    size_t i = maxLength - 1;
+    while (digits[i] == 0 && i > 0) {
+        --size;
+        --i;
+    }
+    return size;
+}
+
+BigInteger& BigInteger::operator+=(const BigInteger& other) {
+    if (other == 0) {
+        return *this;
+    }
+    if (other.is_negative != is_negative) {
+        return *this -=(-(other));
+    } else {
+        for (size_t i = 0; i < maxLength; ++i) {
+            digits[i] += other.digits[i];
+            if (digits[i] >= base) {
+                if (i == maxLength - 1) {
+                    BigIntegerOverflow ex;
+                    throw ex;
+                }
+                digits[i + 1] += 1;
+                digits[i] -= base;
+            }
+        }
+    }
+    return *this;
+}
+
+BigInteger& BigInteger::operator-=(const BigInteger& other) {
+    if (other == 0) {
+        return *this;
+    }
+    if (*this == other) {
+        *this = 0;
+        is_negative = false;
+        return *this;
+    }
+    if (other.is_negative != is_negative) {
+        return *this += (-(other));
+    } else {
+        if (ModuloComparison(*this, other)) {
+            for (size_t i = 0; i < maxLength; ++i) {
+                if (digits[i] >= other.digits[i]) {
+                    digits[i] -= other.digits[i];
+                } else {
+                    digits[i] = digits[i] + base - other.digits[i];
+                    if (digits[i + 1] != 0) {
+                        digits[i + 1] -= 1;
+                    } else {
+                        size_t j = i + 1;
+                        while (digits[j] == 0) {
+                            digits[j] = base - 1;
+                            ++j;
+                        }
+                        digits[j] -= 1;
+                    }
+                }
+            }
+        } else {
+            bool GetFromNext = false;
+            for (size_t i = 0; i < maxLength;) {
+                if (digits[i] <= other.digits[i] - GetFromNext) {
+                    digits[i] = other.digits[i] - digits[i] - GetFromNext;
+                    GetFromNext = false;
+                    ++i;
+                } else {
+                    digits[i] = base + other.digits[i] - digits[i] - GetFromNext;
+                    ++i;
+                    while (other.digits[i] == 0) {
+                        digits[i] = base - 1 - digits[i];
+                        ++i;
+                    }
+                    GetFromNext = true;
+                }
+            }
+            *this = -(*this);
+        }
+    }
+    return *this;
+}
+
+BigInteger& BigInteger::operator%=(const BigInteger& other) {
+    *this = *this % other;
+    return *this;
+}
+
+BigInteger& BigInteger::operator*=(const BigInteger& other) {
+    size_t my_size = Size();
+    size_t other_size = other.Size();
+    double_digit_type result_now_value[maxLength + 1];
+    for(size_t i = 0; i < maxLength + 1; ++i){
+        result_now_value[i] = 0;
+    }
+    if ((my_size + other_size - 1) > maxLength) {
+        BigIntegerOverflow ex;
+        throw ex;
+    }
+    for (size_t i = 0; i < my_size; ++i) {
+        for (size_t j = 0; j < other_size; ++j) {
+            result_now_value[i + j] += static_cast<unsigned long long>(digits[i]) * other.digits[j];
+            size_t tmp = i+j;
+            while (result_now_value[tmp] >= base) {
+                if (tmp == maxLength - 1){
+                    BigIntegerOverflow ex;
+                    throw ex;
+                }
+                result_now_value[tmp+1] += result_now_value[tmp] / base;
+                result_now_value[tmp] %= base;
+                ++tmp;
+            }
+        }
+    }
+    for(size_t i = 0; i < maxLength; ++i) {
+        if (result_now_value[i] < base) {
+            digits[i] = result_now_value[i];
+        } else {
+            if (i == maxLength - 1) {
+                BigIntegerOverflow ex;
+                throw ex;
+            }
+            digits[i] = result_now_value[i] % base;
+            result_now_value[i + 1] += result_now_value[i] / base;
+        }
+    }
+    if ((other.is_negative && *this!= 0) || (is_negative && other == 0)) {
+        is_negative = !is_negative;
+    }
+    return *this;
+}
+
+BigInteger& BigInteger::operator/=(const BigInteger& other) {
+    size_t my_size = Size();
+    size_t other_size = other.Size();
+    double_digit_type result[maxLength + 1];
+    if (other_size == 1 && other.digits[0] == 0) {
+        BigIntegerOverflow ex;
+        throw ex;
+    }
+
+    if (other_size == 1) {
+        for (size_t i = 0; i < maxLength + 1; ++i) {
+            result[i] = digits[i];
+        }
+        for (size_t i = my_size; i > 0; --i) {
+            if (i > 1) {
+                result[i - 2] += static_cast<unsigned long long>(result[i -1] % other.digits[0])*base;
+            }
+            result[i - 1] /= other.digits[0];
+        }
+
+        for (size_t i = 0; i < maxLength; ++i) {
+            if (result[i] < base) {
+                digits[i] = result[i];
+            } else {
+                digits[i] = result[i] % base;
+                result[i + 1] += result[i]/base;
+            }
+        }
+        return *this;
+    }
+
+    if (*this == other) {
+        *this = 1;
+        return *this;
+    }
+
+    if (*this < other) {
+        *this = 0;
+        return *this;
+    }
+
+    BigInteger other_copy = other;
+    if (my_size != other_size) {
+        for (size_t i = maxLength - my_size + other_size; i > 0; --i) {
+            other_copy.digits[i + my_size - other_size - 1] = other_copy.digits[i - 1];
+            other_copy.digits[i - 1] = 0;
+        }
+    }
+
+    for (size_t i = 0; i < maxLength + 1; ++i) {
+        result[i] = 0;
+    }
+    for (size_t i = my_size - other_size + 1; i > 0; --i) {
+        double_digit_type max = base;
+        double_digit_type min = 0;
+        double_digit_type mid = 0;
+        double_digit_type answer = 0;
+        while (min <= max) {
+            mid = (max + min) / 2;
+            if (other_copy * mid <= *this) {
+                answer = mid;
+                min = mid + 1;
+            } else {
+                max = mid - 1;
+            }
+        }
+        result[i - 1] = answer;
+        *this -= other_copy * answer;
+        size_t copy_size = other_copy.Size();
+        for (size_t i = 0; i < copy_size - 1; ++i) {
+            other_copy.digits[i] = other_copy.digits[i + 1];
+            other_copy.digits[i + 1] = 0;
+        }
+    }
+    is_negative = false;
+    for (size_t i = my_size - other_size + 1; i > 0; --i) {
+        digits[i - 1] = result[i - 1];
+    }
+    return *this;
+}
+
+BigInteger operator/(const BigInteger& str_first, const BigInteger& str_second) {
+    BigInteger result = str_first;
+    result /= str_second;
+    return result;
+}
+
+BigInteger operator%(const BigInteger& str_first, const BigInteger& str_second) {
+    BigInteger result = str_first - (str_first/str_second)*str_second;
+    return result;
+}
+
+BigInteger& BigInteger::operator--() {
+    *this -= BigInteger(1);
+    return *this;
+}
+
+BigInteger& BigInteger::operator++() {
+    *this += BigInteger(1);
+    return *this;
+}
+
+BigInteger BigInteger::operator--(int) {
+    BigInteger result = *this;
+    *this -= BigInteger(1);
+    return result;
+}
+
+BigInteger BigInteger::operator++(int) {
+    BigInteger result = *this;
+    *this += BigInteger(1);
+    return result;
+}
+
+BigInteger BigInteger::operator -() const {
+    if (*this == 0) {
+        return BigInteger(*this);
+    }
+    BigInteger tmp = *this;
+    tmp.is_negative = !is_negative;
+    return tmp;
+}
+
+template <class T>
+BigInteger& BigInteger::operator/=(T value) {
+    double_digit_type result[maxLength + 1];
+    for (size_t i = 0; i < maxLength + 1; ++i) {
+        result[i] = digits[i];
+    }
+    size_t my_size = Size();
+    for (size_t i = my_size; i > 0; --i) {
+        if (i > 1) {
+            result[i - 2] += static_cast<long long>(result[i -1] % value)*base;
+        }
+        result[i - 1] /= value;
+    }
+    for (size_t i = 0; i < maxLength; ++i) {
+        if (result[i] < base) {
+            digits[i] = result[i];
+        } else {
+            digits[i] = result[i] % base;
+            result[i + 1] += result[i]/base;
+        }
+    }
+    return (*this);
+}
+
+BigInteger operator*(const BigInteger& str_first, const BigInteger& str_second) {
+    BigInteger result = str_first;
+    result *= str_second;
+    return result;
+}
+
+BigInteger operator+(const BigInteger& str_first, const BigInteger& str_second) {
+    BigInteger result = str_first;
+    result += str_second;
+    return result;
+}
+
+BigInteger operator-(const BigInteger& str_first, const BigInteger& str_second) {
+    BigInteger result = str_first;
+    result -= str_second;
+    return result;
+}
+
+bool operator==(const BigInteger& str_first, const BigInteger& str_second) {
+    if (str_first.IsNegative() != str_second.IsNegative()) {
+        return false;
+    }
+    if (str_first.Size() != str_second.Size()) {
+        return false;
+    } else {
+        for (size_t i = 0; i < str_first.MaxLength(); ++i) {
+            if (str_first.GetBuffer(i) != str_second.GetBuffer(i)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+bool operator>(const BigInteger& str_first, const BigInteger& str_second) {
+    if (str_first.IsNegative() && !str_second.IsNegative()) {
+        return false;
+    }
+    if (!str_first.IsNegative() && str_second.IsNegative()) {
+        return true;
+    } else if (!str_first.IsNegative() && !str_second.IsNegative()) {
+        return ModuloComparison(str_first, str_second);
+    } else {
+        return !ModuloComparison(str_first, str_second);
+    }
+    return false;
+}
+
+bool operator<(const BigInteger& number_first, const BigInteger& number_second) {
+    return (!(number_first > number_second) && !(number_first == number_second));
+}
+bool operator>=(const BigInteger& number_first, const BigInteger& number_second) {
+    return !(number_first < number_second);
+}
+
+bool operator<=(const BigInteger& number_first, const BigInteger& number_second) {
+    return !(number_first > number_second);
+}
+
+bool operator!=(const BigInteger& number_first, const BigInteger& number_second) {
+    return !(number_first == number_second);
+}
+
+std::istream& operator>>(std::istream& stream, BigInteger& bigInt) {
+    char symbol = stream.get();
+    std::string str;
+    while((symbol>='0' && symbol <='9') || symbol == '-') {
+        str += symbol;
+        symbol = stream.get();
+    }
+    bigInt = BigInteger(str);
+    return stream;
+}
+
+std::ostream& operator<<(std::ostream& stream, const BigInteger& bigInt) {
+    std::string str;
+    size_t bigInt_size = bigInt.Size();
+    for(size_t i = 0; i < bigInt_size; ++i){
+        str = std::to_string(bigInt.GetBuffer(i)) + str;
+        while (str.size() < 9*(i+1) && i != bigInt_size - 1){
+            str ="0" + str;
+        }
+    }
+    if (bigInt.IsNegative()) {
+        str = "-" + str;
+    }
+    stream << str;
+    return stream;
+}
+
+int main() {
+    std::ios_base::sync_with_stdio(false);
+    std::cin.tie(nullptr);
+    BigInteger a, b;
+    std::cin >> a >> b;
+    int c;
+    std::cin >> c;
+    std::cout << ((a * c) == (c * --b++)) << std::endl;
+    std::cout << (a + 5 < ++b--) << std::endl;
+    std::cout << (a <= b) << std::endl;
+    std::cout << (a > b - 5) << std::endl;
+    std::cout << (a >= b - 5) << std::endl;
+    std::cout << (a != b * c) << std::endl;
+    std::cout << (a == -b) << std::endl;
+
+    BigInteger d("123"), e(1ULL << 63);
+    std::cout << (d + c) * e << std::endl;
+
+    try {
+        a += b;
+        b = a - b;
+        a -= b;
+        std::cout << a + b << std::endl;
+        std::cout << a - b << std::endl;
+        std::cout << a * b << std::endl;
+    } catch (const BigIntegerOverflow &ex) {
+        std::cout << "Overflow" << std::endl;
+
+    }
+}
+

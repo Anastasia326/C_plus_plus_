@@ -1,0 +1,70 @@
+#include <iostream>
+#include <vector>
+#include <queue>
+
+std::vector<int> BFS_distance(const std::vector<std::vector<int>> &graph,
+                              int top_first, int top_second) {
+    std::queue<int> storage;
+    storage.push(top_first);
+    const size_t size = graph.size();
+    std::vector<bool> were_here(size, false);
+    std::vector<int> current(size, 0), ancestors(size, -1);
+    were_here[top_first] = true;
+    ancestors[top_first] = -1;
+    while (!storage.empty()) {
+        int front_of_storage = storage.front();
+        storage.pop();
+        for (auto i : graph[front_of_storage]) {
+            int adres = i;
+            if (!were_here[adres]) {
+                storage.push(adres);
+                current[adres] = current[front_of_storage] + 1;
+                ancestors[adres] = front_of_storage;
+                were_here[adres] = true;
+            }
+        }
+    }
+    std::vector<int> answer_path;
+    if (!were_here[top_second]) {
+        answer_path.push_back(-1);
+        return answer_path;
+    }
+    for (int answer = top_second; answer != -1; answer = ancestors[answer]) {
+        answer_path.push_back(answer);
+    }
+    return {answer_path.rbegin(), answer_path.rend()};
+}
+
+int main() {
+    size_t n, m;
+    int top_first, top_second;
+    std::cin >> n >> m >> top_first >> top_second;
+
+    --top_second;
+    --top_first;
+    std::vector<std::vector<int>> graph(n);
+
+    for (size_t i = 0; i < n; ++i) {
+        graph[i].push_back(i);
+    }
+
+    for (size_t i = 0; i < m; ++i) {
+        int a, b;
+        std::cin >> a >> b;
+        graph[a - 1].push_back(b - 1);
+        graph[b - 1].push_back(a - 1);
+    }
+    std::vector<int> answer;
+    answer = BFS_distance(graph, top_first, top_second);
+    size_t size = answer.size();
+    if (size == 1 && answer[0] == -1) {
+        std::cout << "-1";
+    } else {
+        std::cout << (size - 1) << '\n';
+        for (size_t i = 0; i < size; ++i) {
+            std::cout << answer[i] + 1 << " ";
+        }
+    }
+
+}
+

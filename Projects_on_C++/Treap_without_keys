@@ -1,0 +1,175 @@
+#include <iostream>
+#include <vector>
+#include <set>
+#include <algorithm>
+#include <random>
+
+template<class ElemT, class PriorityT>
+class Treap {
+private:
+    struct Node {
+        PriorityT priority;
+        size_t size;
+        ElemT value;
+        ElemT min;
+        const ElemT max_elem = 1000000001;
+        Node *left = nullptr;
+        Node *right = nullptr;
+        Node *parent = nullptr;
+
+        explicit Node(PriorityT prior, ElemT value) : priority(prior), size(1), value(value),
+                                                      min(value) {
+        }
+
+        static size_t SizeOf(Node *node) {
+            return node == nullptr ? 0 : node->size;
+        }
+
+        static void Counting(Node *node) {
+            node->size = SizeOf(node->left) + SizeOf(node->right) + 1;
+        }
+
+        static ElemT GetMinLeft(Node *node) {
+            return node->left ? node->left->min : node->max_elem;
+        }
+
+        static ElemT GetMinRight(Node *node) {
+            return node->right ? node->right->min : node->max_elem;
+        }
+
+        static ElemT GetMin(Node *node) {
+            return std::min(std::min(GetMinRight(node), GetMinLeft(node)), node->value);
+        }
+
+        static void Recalculate(Node *node) {
+            node->min = std::min(std::min(GetMinLeft(node), GetMinRight(node)), node->value);
+        }
+
+    };
+
+    Node *root_;
+
+    static void SetLeft(Node *treap, Node *left) {
+        if (treap != nullptr) {
+            treap->left = left;
+        }
+        if (left != nullptr) {
+            left->parent = treap;
+        }
+        treap->Recalculate(treap);
+        treap->Counting(treap);
+    }
+
+    static void SetRight(Node *treap, Node *right) {
+        if (treap != nullptr) {
+            treap->right = right;
+        }
+        if (right != nullptr) {
+            right->parent = treap;
+        }
+        treap->Recalculate(treap);
+        treap->Counting(treap);
+    }
+
+    static std::pair<Node *, Node *> Split(Node *root, size_t x) {
+        if (root == nullptr) {
+            return {nullptr, nullptr};
+        }
+        if (Treap::Node::SizeOf(root->left) < x) {
+            auto[less_tree, ge_tree] = Split(root->right,
+                                             x - Treap::Node::SizeOf(root->left) - 1);
+            SetRight(root, less_tree);
+            return {root, ge_tree};
+        } else {
+            auto[less_tree, ge_tree] = Split(root->left, x);
+            SetLeft(root, ge_tree);
+            return {less_tree, root};
+        }
+    }
+
+    static Node *Merge(Node *left, Node *right) {
+        if (left == nullptr) {
+            return right;
+        }
+        if (right == nullptr)
+            return left;
+        if (left->priority < right->priority) {
+            Node *node = Merge(left, right->left);
+            SetLeft(right, node);
+            return right;
+        } else {
+            Node *node = Merge(left->right, right);
+            SetRight(left, node);
+            return left;
+        }
+    }
+
+    Node *Insert(Node *root, unsigned int position, ElemT x, size_t index) {
+        auto[less_tree, ge_tree] = Split(root, index);
+        Node *node = new Node(position, x);
+        return Merge(Merge(less_tree, node), ge_tree);
+    }
+
+    static void Clean(Node *node) {
+        if (node != nullptr) {
+            if (node->left != nullptr) {
+                Clean(node->left);
+            }
+            if (node->right != nullptr) {
+                Clean(node->right);
+            }
+            delete node;
+        }
+    }
+
+    ElemT Min(size_t left, size_t right) {
+        std::pair<Node *, Node *> treaps = Split(root_, left);
+        std::pair<Node *, Node *> new_treaps = Split(treaps.second, right - left);
+        ElemT result = Node::GetMin(new_treaps.first);
+        Merge(treaps.first, Merge(new_treaps.first, new_treaps.second));
+        return result;
+    }
+
+    Node *CopyLeaf(const Node *other) {
+        return (other != nullptr) ? new Node(other->priority, other->value) : nullptr;
+    }
+
+    Node *CopyTree(const Node *other) {
+        if (other == nullptr) {
+            return nullptr;
+        }
+        Node *root = CopyLeaf(other);
+        root->left = CopyTree(other->left);
+        root->right = CopyTree(other->right);
+        return root;
+    }
+
+public:
+    Treap() : root_(nullptr) {
+    }
+
+    Treap(const Treap &other) {
+        this->root_ = CopyTree(other);
+    }
+
+    Treap &operator=(const Treap &other) {
+        Treap copy(other);
+        std::swap(*this, copy);
+        return *this;
+    }
+
+    void Add(PriorityT position, ElemT x, size_t index) {
+        root_ = Insert(root_, position, x, index);
+    }
+
+
+    ElemT MinForUser(size_t left, size_t right) {
+        return Min(left, right);
+    }
+
+    ~Treap() {
+        Clean(root_);
+    }
+
+};
+

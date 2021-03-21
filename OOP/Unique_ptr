@@ -1,0 +1,77 @@
+#ifndef UNIQUE_PTR_H
+#define UNIQUE_PTR_H
+
+#include <utility>
+
+template<class T>
+class UniquePtr {
+    T* ptr_;
+
+public:
+    UniquePtr() : ptr_(nullptr) {
+    }
+
+    explicit UniquePtr(T* ptr) : ptr_(ptr) {
+    }
+
+    UniquePtr(UniquePtr&& other) : ptr_(other.ptr_) {
+        other.ptr_ = nullptr;
+    }
+
+    UniquePtr& operator=(UniquePtr&& other) {
+        if (this == &other) {
+            return *this;
+        }
+        delete ptr_;
+        ptr_ = other.ptr_;
+        other.ptr_ = nullptr;
+        return *this;
+    }
+
+    ~UniquePtr() {
+        delete ptr_;
+    }
+
+    T& operator*() const {
+        return *ptr_;
+    }
+    
+    T* operator->() const {
+        return ptr_;
+    }
+    
+    T* Get() const {
+        return ptr_;
+    }
+    
+    operator bool() const {
+        return Get() != nullptr;
+    }
+
+    T* Release() {
+        T* ptr = ptr_;
+        ptr_ = nullptr;
+        return ptr;
+    }
+
+    void Reset(T* ptr = nullptr) {
+        auto old_ptr = ptr_;
+        ptr_ = ptr;
+        if (old_ptr != nullptr) {
+            delete old_ptr;
+        }
+    }
+
+    void Swap(UniquePtr<T>& other) {
+        std::swap(ptr_, other.ptr_);
+    }
+
+    UniquePtr(const UniquePtr& other) = delete;
+    
+    UniquePtr& operator=(const UniquePtr& other) = delete;
+};
+
+
+
+#endif // UNIQUE_PTR_H
+

@@ -1,0 +1,48 @@
+#include <iostream>
+#include <vector>
+#include <algorithm>
+
+template<typename Element>
+class BinaryIndexedTree2D {
+    std::vector<std::vector<Element>> tree_;
+    size_t n_, m_;
+    const Element neutral = 0;
+
+    Element Function(size_t x, size_t y) {
+        Element result = 0;
+        for (int i = x; i >= 0; i = (i & (i + 1)) - 1) {
+            for (int j = y; j >= 0; j = (j & (j + 1)) - 1) {
+                result += tree_[i][j];
+            }
+        }
+    }
+
+    void ReverseFunction(size_t x, size_t y, Element delta) {
+        for (int i = x; i < n_; i |= (i + 1)) {
+            for (int j = y; j < m_; j |= (j + 1)) {
+                tree_[i][j] += delta;
+            }
+        }
+    }
+
+    Element Sum(size_t x, size_t y) const {
+        Element result = Function(x, y);
+        return result;
+    }
+
+public:
+    explicit BinaryIndexedTree2D(size_t n, size_t m) : n_(n), m_(m),
+                                                       tree_(std::vector<std::vector<Element>>(n,
+                                                               std::vector<int>(m, neutral))) {
+    }
+
+    void Update(size_t x, size_t y, Element delta) {
+        ReverseFunction(x, y, delta);
+    }
+
+    Element Sum(size_t first_x, size_t first_y, size_t second_x, size_t second_y) const {
+        return Sum(second_x, second_y) - Sum(first_x - 1, second_y) - Sum(second_x, first_y - 1) +
+               Sum(first_x - 1, first_y - 1);
+    }
+};
+

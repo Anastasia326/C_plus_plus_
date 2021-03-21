@@ -1,0 +1,71 @@
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <set>
+
+enum Colors {
+    undiscovered,
+    discovered,
+    processed
+};
+
+void Dfs(int top, const std::vector<std::vector<int>> &graph,int parent, std::vector<Colors> &color,
+         std::vector<int> &t_in, std::vector<int> &t_up, std::set<int> &answer, int &timer) {
+    color[top] = discovered;
+    t_in[top] = t_up[top] = ++timer;
+    int number_of_children = 0;
+    for(auto u : graph[top]) {
+        if(color[u] != undiscovered && parent != u) {
+            t_up[top] = std::min(t_up[top],t_in[u]);
+        }
+        if(color[u] == undiscovered) {
+            Dfs(u, graph, top, color, t_in, t_up, answer, timer);
+            t_up[top] = std::min(t_up[top], t_up[u]);
+            if (t_up[u] >= t_in[top] && parent != -1) {
+                answer.insert(top);
+            }
+            ++number_of_children;
+        }
+    }
+    color[top] = processed;
+    if(parent == -1 && number_of_children >= 2) {
+        answer.insert(top);
+    }
+}
+
+std::set<int> GetVertices(const std::vector<std::vector<int>> &graph) {
+    const size_t size = graph.size();
+    std::set<int> answer;
+    std::vector<Colors> color(size, undiscovered);
+    std::vector<int> t_in(size, -1);
+    std::vector<int> t_up(size, 20001);
+    int timer = -1;
+    for (int i = 0; i < size; ++i) {
+        if (color[i] == undiscovered) {
+            Dfs(i, graph,-1, color, t_in, t_up, answer, timer);
+        }
+    }
+    return answer;
+}
+
+int main() {
+    int n, m;
+    std::cin >> n >> m;
+    std::vector<std::vector<int>> graph(n);
+    for (int j = 0; j < m; ++j) {
+        int top, neighbour;
+        std::cin >> top >> neighbour;
+        graph[top - 1].push_back(neighbour - 1);
+        graph[neighbour - 1].push_back(top - 1);
+    }
+
+
+    std::set<int> answer = GetVertices(graph);
+    const size_t size = answer.size();
+    std::cout << size << '\n';
+    for(auto i : answer) {
+        std::cout << i + 1 << '\n';
+    }
+
+}
+

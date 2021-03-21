@@ -1,0 +1,99 @@
+#include <iostream>
+#include <vector>
+
+std::vector<std::vector<int>> Transpose(const std::vector<std::vector<int>> &graph) {
+    const int size = graph.size();
+    std::vector<std::vector<int>> graph_T(size);
+    for (int i = 0; i < size; ++i) {
+        for (size_t j = 0; j < graph[i].size(); ++j) {
+            int a = graph[i][j];
+            graph_T[a].push_back(i);
+        }
+    }
+    return graph_T;
+}
+
+void Sort(const int &top, std::vector<bool> &were_here, std::vector<int> &tops,
+          const std::vector<std::vector<int>> &graph) {
+    were_here[top] = true;
+    for (size_t i = 0; i < graph[top].size(); ++i) {
+        if (!were_here[graph[top][i]]) {
+            Sort(graph[top][i], were_here, tops, graph);
+        }
+    }
+    tops.push_back(top);
+}
+
+enum Colors {
+    undiscovered,
+    discovered,
+    processed
+};
+
+void DFSVisit(const std::vector<std::vector<int>> &graph, int source, std::vector<Colors> &color,
+              std::vector<int> &result) {
+    color[source] = discovered;
+    result.push_back(source);
+    for (size_t i = 0; i < graph[source].size(); ++i) {
+        int node = graph[source][i];
+        if (color[node] == undiscovered) {
+            DFSVisit(graph, node, color, result);
+        }
+    }
+    color[source] = processed;
+}
+
+std::vector<std::vector<int>> StartComponents(const std::vector<std::vector<int>> &graph) {
+    const int size = graph.size();
+    std::vector<std::vector<int>> graph_T = Transpose(graph);
+    std::vector<bool> were_here(size, false);
+    std::vector<int> tops;
+    std::vector<Colors> colors(size, undiscovered);
+    std::vector<std::vector<int>> components;
+
+    for (int i = 0; i < size; ++i) {
+        if (!were_here[i]) {
+            Sort(i, were_here, tops, graph);
+        }
+    }
+
+    for (int i = 0; i < size; ++i) {
+        if (colors[tops[size - 1 -i]] == undiscovered) {
+            components.emplace_back();
+            DFSVisit(graph_T, tops[size - 1 -i], colors, components.back());
+        }
+    }
+
+    return components;
+
+}
+
+std::vector<int> Paint(const std::vector<std::vector<int>> &components, int size) {
+    std::vector<int> answer(size);
+    const int number_of_components = components.size();
+    for(int i = 0; i < number_of_components; ++i) {
+        for(auto j : components[i]) {
+            answer[j] = i + 1;
+        }
+    }
+    return answer;
+}
+
+int main() {
+    size_t n, m;
+    std::cin >> n >> m;
+    std::vector<std::vector<int>> graph(n);
+
+    for (size_t i = 0; i < m; ++i) {
+        int a, b;
+        std::cin >> a >> b;
+        graph[a - 1].push_back(b - 1);
+    }
+    std::vector<std::vector<int>> answer = StartComponents(graph);
+    std::vector<int> components_for_graph = Paint(answer, n);
+    const int size = answer.size();
+    std::cout << size << "\n";
+    for (int j = 0; j < n; ++j) {
+        std::cout << components_for_graph[j] << " ";
+    }
+}

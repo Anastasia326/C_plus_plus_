@@ -1,0 +1,69 @@
+#include <iostream>
+#include <vector>
+#include <map>
+#include <queue>
+#include <algorithm>
+
+long int
+LookingForFlow(const std::vector<std::map<int,int>> &graph, std::vector<int> &ancestors,
+               int top_first, int top_second) {
+    const int max_size = 1000000;
+    ancestors.assign(ancestors.size(), -1);
+    std::queue<std::pair<int, int>> storage;
+    ancestors[top_first] = -2;
+    storage.push({top_first, max_size});
+    while (!storage.empty()) {
+        auto[now_top, flow] = storage.front();
+        storage.pop();
+        for (auto next: graph[now_top]) {
+            if (ancestors[next.first] == -1 && next.second != 0) {
+                ancestors[next.first] = now_top;
+                int new_flow = std::min(flow, next.second);
+                if (next.first == top_second) {
+                    return new_flow;
+                }
+                storage.emplace(next.first, new_flow);
+            }
+        }
+    }
+    return 0;
+}
+
+long int
+NewFlow(std::vector<std::map<int, int>> &graph, long int new_flow, int start, int finish,
+        std::vector<int> &ancestors) {
+    long int answer = 0;
+    while (new_flow) {
+        answer += new_flow;
+        int now_top = finish;
+        while (now_top != start) {
+            int previous = ancestors[now_top];
+            graph[previous][now_top] -= new_flow;
+            graph[now_top][previous] += new_flow;
+            now_top = previous;
+        }
+        new_flow = LookingForFlow(graph, ancestors, start, finish);
+    }
+    return answer;
+}
+
+long int FindFlow(int start, int finish, std::vector<std::map<int, int>> &graph) {
+    long int new_flow;
+    const int size = graph.size();
+    std::vector<int> ancestors(size, -1);
+    new_flow = LookingForFlow(graph, ancestors, start, finish);
+    return NewFlow(graph, new_flow, start, finish, ancestors);
+}
+
+int main() {
+    int n, m;
+    std::cin >> n >> m;
+    std::vector<std::map<int, int>> graph(n);
+    for (int i = 0; i < m; ++i) {
+        int top, neighbour, weight;
+        std::cin >> top >> neighbour >> weight;
+        graph[top - 1][neighbour - 1] = weight;
+        //graph[neighbour - 1][top - 1] = 0;
+    }
+    std::cout << FindFlow(0, n - 1, graph);
+}

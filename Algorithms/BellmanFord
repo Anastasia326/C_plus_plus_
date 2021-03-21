@@ -1,0 +1,114 @@
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <map>
+
+struct Edge {
+    int from;
+    int to;
+    int capacity;
+};
+
+std::vector<int> BellmanFord(std::vector<std::vector<int>> &graph, int top) {
+    const int size = graph.size();
+    const int max_size = 100000001;
+    std::vector<int> distance(size, max_size);
+    distance[top] = 0;
+    bool do_something = false;
+    for (int j = 0; j < size; ++j) {
+        do_something = false;
+        for (int i = 0; i < size; ++i) {
+            for (int k = 0; k < size; ++k) {
+                if (distance[i] < max_size && graph[i][k] != -1) {
+                    if (distance[k] > distance[i] + graph[i][k]) {
+                        distance[k] = distance[i] + graph[i][k];
+                        do_something = true;
+                    }
+                }
+            }
+        }
+        if (!do_something) {
+            break;
+        }
+    }
+    return distance;
+}
+
+std::vector<int> Distance(const std::vector<std::vector<int>> &graph, int start) {
+    const int max_size = 100000001;
+    const int size = graph.size();
+    std::vector<int> distance(size, max_size);
+    distance[start] = 0;
+    std::vector<bool> were_here(size, false);
+    for (int i = 0; i < size - 1; ++i) {
+        int min_path = max_size;
+        int index = 0;
+        for (int j = 0; j < size; ++j) {
+            if (!were_here[j] && distance[j] <= min_path) {
+                min_path = distance[j];
+                index = j;
+            }
+        }
+        int new_top = index;
+        were_here[new_top] = true;
+        for (int j = 0; j < size; ++j) {
+            if (!were_here[j] && graph[new_top][j] > 0 && distance[new_top] != max_size &&
+                distance[new_top] + graph[new_top][j] < distance[j]) {
+                distance[j] = distance[new_top] + graph[new_top][j];
+            }
+        }
+    }
+    return distance;
+}
+
+int Johnson(const std::vector<std::vector<int>> &graph) {
+    std::map<int, std::pair<int, int>> distance;
+    const int size = graph.size();
+    std::vector<std::vector<int>> new_graph;
+    new_graph = graph;
+    new_graph.resize(size + 1);
+    for (int i = 0; i < size + 1; ++i) {
+        new_graph[i].resize(size+1);
+        new_graph[i][size] = 0;
+    }
+    for (int j = 0; j < size+1; ++j) {
+        new_graph[size][j] = 0;
+    }
+    std::vector<int> function = BellmanFord(new_graph, size);
+    for (int i = 0; i < size; ++i) {
+        for (int j = 0; j < size; ++j) {
+            new_graph[i][j] = new_graph[i][j] + function[i] - function[j];
+        }
+    }
+
+    for (int i = 0; i < size; ++i) {
+        std::vector<int> answer = Distance(graph, i);
+        int j = 0;
+        for (auto dist : answer) {
+            if(dist != 100000001) {
+                distance[dist] = {i, j};
+                ++j;
+            }
+        }
+    }
+
+    int answer = std::prev(distance.end())->first + function[std::prev(distance.end())->second.first] -
+                 function[std::prev(distance.end())->second.second];
+    return answer;
+}
+
+int main() {
+    std::ios_base::sync_with_stdio(false);
+    int number_of_vertex;
+    std::cin >> number_of_vertex;
+    std::vector<std::vector<int>> graph(number_of_vertex);
+    for (int i = 0; i < number_of_vertex; ++i) {
+        graph[i].resize(number_of_vertex);
+        for (int j = 0; j < number_of_vertex; ++j) {
+            std::cin >> graph[i][j];
+        }
+    }
+
+    std::cout << Johnson(graph);
+
+}

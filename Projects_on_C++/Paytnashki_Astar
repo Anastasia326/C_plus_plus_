@@ -1,0 +1,200 @@
+#include <iostream>
+#include <cmath>
+#include <algorithm>
+#include <vector>
+#include <set>
+#include <map>
+#include <queue>
+
+struct Position {
+    std::vector<short int> position;
+    int index_of_zero;
+    std::string path;
+};
+
+int Heuristic_distance(const Position &position) { 
+    const int size = 4;
+    int distance = 0;
+    const int size_of_field = 16;
+    for (int i = 0; i < size_of_field; ++i) {
+        short int symbol = position.position[i];
+        if (symbol == 0) {
+            continue;
+        }
+        distance +=
+                std::abs(i % size - ((symbol - 1) % 4)) + std::abs(i / size - (symbol - 1) / size);
+    }
+    std::set<int> line_conflicts;
+    for (int i = 0; i < size; ++i) {
+        for (int j = 0; j < size; ++j) {
+            for (int k = j + 1; k < size; ++k) {
+                if ((i * size + k) != position.index_of_zero &&
+                    (i * size + j) != position.index_of_zero &&
+                    ((position.position[i * size + k] - 1) / size == i) &&
+                    ((position.position[i * size + j] - 1) / size == i) &&
+                    (position.position[i * size + j] > position.position[size * i + k])) {
+                    distance += 2;
+                    line_conflicts.insert(position.position[i * size + k]);
+                    line_conflicts.insert(position.position[size * i + k]);
+                }
+            }
+        }
+    }
+    //затем проверяем три угла
+    if ((position.position[1] == 2 && position.position[4] == 5 && position.position[0] != 1 &&
+         (line_conflicts.find(2) == line_conflicts.end()) &&
+         (line_conflicts.find(4) == line_conflicts.end())) ||
+        (position.position[2] == 3 && position.position[7] == 8 && position.position[3] != 4 &&
+         (line_conflicts.find(3) == line_conflicts.end()) &&
+         (line_conflicts.find(8) == line_conflicts.end())) ||
+        (position.position[8] == 9 && position.position[13] == 14 && position.position[12] != 13 &&
+         (line_conflicts.find(14) == line_conflicts.end()) &&
+         (line_conflicts.find(9) == line_conflicts.end()))) {
+        distance += 2;
+    }
+    // последний ход
+    bool last_move = false;
+    for (int i = 3; i < size_of_field; i += 4) {
+        if (position.position[i] == 15) {
+            last_move = true;
+            break;
+        }
+    }
+    if (!last_move) {
+        for (int i = 12; i < size_of_field; ++i) {
+            if (position.position[i] == 12) {
+                last_move = true;
+                break;
+            }
+        }
+    }
+    if (!last_move) {
+        distance += 2;
+    }
+    return distance;
+}
+
+void GoToNeighbours(const Position &position, int g, int distance, std::string &answer,
+                    std::set<std::vector<short int>> &were_here, int &realy_distance);
+
+bool ShouldGoHere(const Position &position, int g, int distance, std::string &answer,
+                  std::set<std::vector<short int>> &were_here, int &realy_distance) {
+    std::vector<short int> finish = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0};
+    if (position.position == finish) {
+        if (answer == "" || position.path.size() < answer.size()) {
+            answer = position.path;
+        }
+        return true;
+    } else if (were_here.find(position.position) == were_here.end()) {
+        int function = g + Heuristic_distance(position);
+        if (function <= distance) {
+            were_here.insert(position.position);
+            GoToNeighbours(position, g + 1, distance, answer, were_here, realy_distance);
+            were_here.erase(position.position);
+        } else {
+            realy_distance = std::min(realy_distance, function);
+        }
+    }
+    return false;
+}
+
+void GoToNeighbours(const Position &position, int g, int distance, std::string &answer,
+                    std::set<std::vector<short int>> &were_here, int &realy_distance) {
+    if (position.index_of_zero % 4 != 0) {
+        std::vector<short int> copy = position.position;
+        std::swap(copy[position.index_of_zero], copy[position.index_of_zero - 1]);
+        Position new_position = position;
+        new_position.path += "R";
+        new_position.position = copy;
+        new_position.index_of_zero = position.index_of_zero - 1;
+        if (ShouldGoHere(new_position, g, distance, answer, were_here, realy_distance)) {
+            return;
+        }
+    }
+    if (position.index_of_zero % 4 != 3) {
+        std::vector<short int> copy = position.position;
+        std::swap(copy[position.index_of_zero], copy[position.index_of_zero + 1]);
+        Position new_position = position;
+        new_position.path += "L";
+        new_position.position = copy;
+        new_position.index_of_zero = position.index_of_zero + 1;
+        if (ShouldGoHere(new_position, g, distance, answer, were_here, realy_distance)) {
+            return;
+        }
+    }
+    if (position.index_of_zero > 3) {
+        std::vector<short int> copy = position.position;
+        std::swap(copy[position.index_of_zero], copy[position.index_of_zero - 4]);
+        Position new_position = position;
+        new_position.path += "D";
+        new_position.position = copy;
+        new_position.index_of_zero = position.index_of_zero - 4;
+        if (ShouldGoHere(new_position, g, distance, answer, were_here, realy_distance)) {
+            return;
+        }
+    }
+    if (position.index_of_zero < 12) {
+        std::vector<short int> copy = position.position;
+        std::swap(copy[position.index_of_zero], copy[position.index_of_zero + 4]);
+        Position new_position = position;
+        new_position.path += "U";
+        new_position.position = copy;
+        new_position.index_of_zero = position.index_of_zero + 4;
+        if (ShouldGoHere(new_position, g, distance, answer, were_here, realy_distance)) {
+            return;
+        }
+    }
+}
+
+std::string AStar(const Position &position) {
+    std::string answer = {};
+    std::set<std::vector<short int>> were_here;
+    int min_distance = Heuristic_distance(position);
+    int realy_distance = 0;
+    while (answer.empty()) {
+        were_here.insert(position.position);
+        realy_distance = 1000000000;
+        GoToNeighbours(position, 1, min_distance, answer, were_here, realy_distance);
+        min_distance = realy_distance;
+        were_here.clear();
+    }
+    return answer;
+}
+
+bool CanSolve(const Position &start_pos) {
+    int number_of_inversions = 0;
+    const int size_of_field = 16;
+    for (int i = 0; i < size_of_field; ++i) {
+        for (int j = i + 1; j < size_of_field; ++j) {
+            if (start_pos.position[i] != 0 && start_pos.position[j] != 0 &&
+                start_pos.position[i] > start_pos.position[j]) {
+                ++number_of_inversions;
+            }
+        }
+    }
+    return (number_of_inversions % 2 == 0) == ((start_pos.index_of_zero / 4) % 2 == 1);
+}
+
+int main() {
+    Position start_position;
+    std::vector<short int> finish = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0};
+    start_position.position.resize(16);
+    for (int i = 0; i < 16; ++i) {
+        std::cin >> start_position.position[i];
+        if (start_position.position[i] == 0) {
+            start_position.index_of_zero = i;
+        }
+    }
+    if (start_position.position == finish) {
+        std::cout << 0;
+        return 0;
+    }
+    if (!CanSolve(start_position)) {
+        std::cout << -1;
+        return 0;
+    } else {
+        std::string answer = AStar(start_position);
+        std::cout << answer.size() << '\n' << answer;
+    }
+}
+

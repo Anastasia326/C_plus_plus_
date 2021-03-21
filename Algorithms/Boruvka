@@ -1,0 +1,127 @@
+#include <iostream>
+#include <vector>
+
+struct Edge {
+    int first;
+    int second;
+    int weight;
+};
+
+class Dsu {
+    mutable std::vector<int> predecessors_;
+    std::vector<size_t> ranks_;
+    int number_of_components;
+
+public:
+    explicit Dsu(size_t n_sets);
+
+    int MakeSet();
+
+    int FindSet(int x) const;
+
+    void Union(int x, int y);
+
+    int NumSets() const;
+};
+
+Dsu::Dsu(size_t n_sets) : predecessors_(n_sets), ranks_(n_sets, 0) {
+    for (int i = 0; i < n_sets; ++i) {
+        predecessors_[i] = i;
+    }
+    number_of_components = n_sets;
+}
+
+int Dsu::MakeSet() {
+    predecessors_.push_back(predecessors_.size());
+    ranks_.push_back(0);
+    number_of_components = 1;
+    return predecessors_.size() - 1;
+}
+
+int Dsu::FindSet(int x) const {
+    if (predecessors_[x] == x) {
+        return x;
+    }
+    predecessors_[x] = FindSet(predecessors_[x]);
+    return predecessors_[x];
+}
+
+void Dsu::Union(int x, int y) {
+    x = FindSet(x);
+    y = FindSet(y);
+    if (ranks_[x] < ranks_[y]) {
+        predecessors_[x] = y;
+    } else if (ranks_[y] < ranks_[x]) {
+        predecessors_[y] = x;
+    } else {
+        ++ranks_[x];
+        predecessors_[y] = x;
+    }
+    --number_of_components;
+}
+
+int Dsu::NumSets() const {
+    return number_of_components;
+}
+
+std::vector<Edge> Boruvka(std::vector<std::vector<Edge>> graph) {
+    const int number_of_vertex = graph.size();
+    std::vector<Edge *> min_edge(number_of_vertex, nullptr);
+    std::vector<Edge> mst;
+    Dsu dsu(number_of_vertex);
+    while (dsu.NumSets() > 1) {
+        min_edge.assign(number_of_vertex, nullptr);
+        for (int i = 0; i < number_of_vertex; ++i) {
+            for (auto &edge : graph[i]) {
+                const int first_component = dsu.FindSet(edge.first);
+                const int second_component = dsu.FindSet(edge.second);
+
+                if (first_component == second_component) {
+                    continue;
+                } else {
+                    if (min_edge[first_component] == nullptr ||
+                        min_edge[first_component]->weight > edge.weight) {
+                        min_edge[first_component] = &edge;
+                    }
+                    if (min_edge[second_component] == nullptr ||
+                        min_edge[second_component]->weight > edge.weight) {
+                        min_edge[second_component] = &edge;
+                    }
+                }
+            }
+        }
+
+        for (int i = 0; i < number_of_vertex; ++i) { // не понятно, зачем тут  range-based for,
+            // мы вроде бы просто все вершины проходим,
+            // а под них нет отдельного массива
+            if (min_edge[i] != nullptr) {
+                const int first_component = dsu.FindSet(min_edge[i]->first);
+                const int second_component = dsu.FindSet(min_edge[i]->second);
+                if (first_component == second_component) {
+                    continue;
+                }
+                mst.push_back(*min_edge[i]);
+                dsu.Union(first_component, second_component);
+            }
+        }
+    }
+    return mst;
+}
+
+int main() {
+    int n, m;
+    std::cin >> n >> m;
+    std::vector<std::vector<Edge>> graph(n);
+    for (int i = 0; i < m; ++i) {
+        int first, second, weight;
+        std::cin >> first >> second >> weight;
+        graph[first - 1].push_back(Edge{first - 1, second - 1, weight});
+    }
+
+    std::vector<Edge> mst = Boruvka(graph);
+    int answer = 0;
+    for (auto edge : mst) {
+        answer += edge.weight;
+    }
+    std::cout << answer;
+}

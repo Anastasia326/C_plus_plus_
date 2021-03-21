@@ -1,0 +1,929 @@
+#include <iostream>
+#include <cstdlib>
+#include <math.h>
+#include <cstring>
+#include <vector>
+#include <iomanip>
+#include <algorithm>
+#include <stdio.h>
+
+namespace geometry {
+    class Vector;
+
+    class AbstractShape;
+
+    class Point;
+
+    class Segment;
+
+    class Ray;
+
+    class Line;
+
+    class Polygon;
+
+    class Circle;
+
+    class AbstractShape {
+    public:
+        virtual AbstractShape *const Move(const Vector &vector) = 0;
+
+        virtual bool ContainsPoint(const Point &point) const = 0;
+
+        virtual bool CrossSegment(const Segment &segment) const = 0;
+
+        virtual AbstractShape *Clone() const = 0;
+
+        virtual void Print() = 0;
+
+        virtual ~AbstractShape() {};
+    };
+
+    class Point : public AbstractShape {
+        int x_;
+        int y_;
+    public:
+        Point() = default;
+
+        Point &operator=(const Point &other) = default;
+
+        Point(int x, int y);
+
+        int GetX() const;
+
+        int GetY() const;
+
+        int &GetX();
+
+        int &GetY();
+
+        AbstractShape *const Move(const Vector &vector) override;
+
+        bool ContainsPoint(const Point &point) const override;
+
+        bool CrossSegment(const Segment &segment) const override;
+
+        AbstractShape *Clone() const override;
+
+        void Print() override;
+
+        ~Point() = default;
+
+    };
+
+    class Vector {
+        int x_;
+        int y_;
+    public:
+        Vector() = default;
+
+        Vector &operator=(const Vector &other) = default;
+
+        Vector(Point const &A, Point const &B);
+
+        Vector(int x, int y);
+
+        Vector(int x1, int y1, int x2, int y2);
+
+        int GetX() const {
+            return x_;
+        }
+
+        int GetY() const {
+            return y_;
+        }
+
+        ~Vector() = default;
+    };
+
+    class Segment : public AbstractShape {
+        Point A_;
+        Point B_;
+    public:
+        Segment() = default;
+
+        Segment &operator=(const Segment &other) = default;
+
+        Segment(Point A, Point B);
+
+        Segment(int x1, int y1, int x2, int y2);
+
+        Point GetA() const {
+            return A_;
+        }
+
+        Point GetB() const {
+            return B_;
+        }
+
+        AbstractShape *const Move(const Vector &vector) override;
+
+        bool ContainsPoint(const Point &point) const override;
+
+        bool CrossSegment(const Segment &segment) const override;
+
+        AbstractShape *Clone() const override;
+
+        void Print() override;
+
+        ~Segment() = default;
+    };
+
+    class Line : public AbstractShape {
+        double A_;
+        double B_;
+        double C_;
+    public:
+        Point X_;
+
+        Point Y_;
+
+        Line() = default;
+
+        Line &operator=(const Line &other) = default;
+
+        Line(double const &A, double const &B, double const &C);
+
+        Line(Point X, Point Y);
+
+        Vector GuidingVector();
+
+        double GetA() const;
+
+        double GetB() const;
+
+        double GetC() const;
+
+        AbstractShape *const Move(const Vector &vector) override;
+
+        bool ContainsPoint(const Point &point) const override;
+
+        bool CrossSegment(const Segment &segment) const override;
+
+        AbstractShape *Clone() const override;
+
+        void Print() override;
+
+        std::pair<Point, Point> GetPointFromLine() const;
+
+        ~Line() = default;
+    };
+
+    class Ray : public AbstractShape {
+        Point Begining_;
+        Point PointForDirection_;
+    public:
+        Ray() = default;
+
+        Ray &operator=(const Ray &other) = default;
+
+        Ray(Point A, Point B);
+
+        Point GetBegining() const;
+
+        Point GetPointForDirection() const;
+
+        AbstractShape *const Move(const Vector &vector) override;
+
+        bool ContainsPoint(const Point &point) const override;
+
+        bool CrossSegment(const Segment &segment) const override;
+
+        AbstractShape *Clone() const override;
+
+        void Print() override;
+
+        ~Ray() = default;
+    };
+
+    class Polygon : public AbstractShape {
+        std::vector<Point> vertices;
+
+    public:
+        Polygon() = default;
+
+        Polygon &operator=(const Polygon &other) = default;
+
+        Polygon(std::vector<Point> points);
+
+        Polygon(std::vector<Point> vector, int numberOfvert);
+
+        /*
+
+        template<class ...Args>
+        Polygon(Args...point) {
+            GivePoint(point...);
+        }
+
+        void GivePoint() {}
+
+        template<class T, class ...Args>
+        void GivePoint(T x, Args...point) {
+            vertices.push_back(x);
+            GivePoint(point...);
+        }
+        */
+
+        int GetNumberOfVertices() const;
+
+        std::vector<Point> &GetVertices() {
+            return vertices;
+        }
+
+        bool IsPointInside(const Point point) const;
+
+        AbstractShape *const Move(const Vector &vector) override;
+
+        bool ContainsPoint(const Point &point) const override;
+
+        bool CrossSegment(const Segment &segment) const override;
+
+        AbstractShape *Clone() const override;
+
+        void Print() override;
+
+        ~Polygon() = default;
+    };
+
+    class Circle : public AbstractShape {
+        int R;
+        int x_;
+        int y_;
+    public:
+        Circle() = default;
+
+        Circle &operator=(const Circle &other) = default;
+
+        Circle(int x, int y, int R);
+
+        Circle(Point centre, int R);
+
+        int GetCentreX() const;
+
+        int GetCentreY() const;
+
+        int GetCentreR() const;
+
+        double ArcLength(const Point &first, const Point &second) const;
+
+        double SegmentOfTouch(const Point &X) const;
+
+        std::pair<Point, Point> PointOfTouch(const Point &X) const;
+
+        bool PointOnCircle(const Point &point) const;
+
+        AbstractShape *const Move(const Vector &vector) override;
+
+        bool ContainsPoint(const Point &point) const override;
+
+        bool CrossSegment(const Segment &segment) const override;
+
+        AbstractShape *Clone() const override;
+
+        void Print() override;
+
+        ~Circle() = default;
+    };
+
+    double Scalar(const Vector &first, const Vector &second) {
+        return first.GetX() * second.GetX() + first.GetY() * second.GetY();
+    }
+
+    double ModuleOfVectorComposition(const Vector &first, const Vector &second) {
+        return first.GetX() * second.GetY() - second.GetX() * first.GetY();
+    }
+
+    bool ISPointInLine(const Point &X, const Point &A, const Point &B) {
+        Vector AP(A, X);
+        Vector AB(A, B);
+        return (ModuleOfVectorComposition(AP, AB) == 0);
+    }
+
+    bool ISPointInRay(const Point &X, const Point &A, const Point &B) {
+        Vector AP(A, X);
+        Vector AB(A, B);
+        return ((ModuleOfVectorComposition(AP, AB) == 0) && Scalar(AP, AB) >= 0);
+    }
+
+
+    bool ISPointInSegment(const Point &X, const Point &A, const Point &B) {
+        return (ISPointInRay(X, A, B) && ISPointInRay(X, B, A));
+    }
+
+    bool SegmentsIntersect(const Point &A, const Point &B, const Point &C, const Point &D) {
+        int x_max_1 = std::max(A.GetX(), B.GetX());
+        int x_max_2 = std::max(C.GetX(), D.GetX());
+        int x_min_1 = std::min(A.GetX(), B.GetX());
+        int x_min_2 = std::min(C.GetX(), D.GetX());
+        int y_max_1 = std::max(A.GetY(), B.GetY());
+        int y_max_2 = std::max(C.GetY(), D.GetY());
+        int y_min_1 = std::min(A.GetY(), B.GetY());
+        int y_min_2 = std::min(C.GetY(), D.GetY());
+        Vector AB(A, B);
+        Vector AC(A, C);
+        Vector AD(A, D);
+        Vector CA(C, A);
+        Vector CD(C, D);
+        Vector CB(C, B);
+        if (x_max_1 < x_min_2 || x_max_2 < x_min_1 || y_max_1 < y_min_2 || y_max_2 < y_min_1) {
+            return false;
+        }
+        if (ModuleOfVectorComposition(AC, AB) * ModuleOfVectorComposition(AD, AB) > 0) {
+            return false;
+        }
+        if (ModuleOfVectorComposition(CA, CD) * ModuleOfVectorComposition(CB, CD) > 0) {
+            return false;
+        }
+        return true;
+    }
+
+    int &Point::GetX() {
+        return x_;
+    }
+
+    int &Point::GetY() {
+        return y_;
+    }
+
+    int Point::GetX() const {
+        return x_;
+    }
+
+    int Point::GetY() const {
+        return y_;
+    }
+
+    double Modul(const double &mod) {
+        if (mod >= 0) {
+            return mod;
+        } else {
+            return -mod;
+        }
+    }
+
+    Point::Point(int x, int y) : x_(x), y_(y) {
+
+    }
+
+    AbstractShape *const Point::Move(const Vector &vector) {
+        x_ += vector.GetX();
+        y_ += vector.GetY();
+        *this = Point(x_, y_);
+        return this;
+    }
+
+    bool Point::ContainsPoint(const Point &point) const {
+        return (x_ == point.x_ && y_ == point.y_);
+    }
+
+    bool Point::CrossSegment(const Segment &segment) const {
+        return (ISPointInSegment(*this, segment.GetA(), segment.GetB()));
+    }
+
+    AbstractShape *Point::Clone() const {
+        Point *answer = new Point(x_, y_);
+        return answer;
+    }
+
+    void Point::Print() {
+        std::cout << x_ << " " << y_ << std::endl;
+    }
+
+    Vector::Vector(int x, int y) : x_(x), y_(y) {
+
+    }
+
+    Vector::Vector(Point const &A, Point const &B) : x_(B.GetX() - A.GetX()), y_(B.GetY() - A.GetY()) {
+
+    }
+
+    Vector::Vector(int x1, int y1, int x2, int y2) : x_(x2 - x1), y_(y2 - y1) {
+
+    }
+
+    Vector Line::GuidingVector() {
+        return Vector(-B_, A_);
+    }
+
+    double LengthOfVector(const Vector &vect) {
+        return sqrt(pow(vect.GetX(), 2) +
+                    pow(vect.GetY(), 2));
+    }
+
+    double LengthOfSegment(const Segment &segment) {
+        return sqrt(pow((segment.GetB().GetX() - segment.GetA().GetX()), 2) +
+                    pow((segment.GetB().GetY() - segment.GetA().GetY()), 2));
+    }
+
+    Vector Sum(const Vector &first, const Vector &second) {
+        Vector sum(first.GetX() + second.GetX(), first.GetY() + second.GetY());
+        return sum;
+    }
+
+    double AreaTriangle(const Vector &first, const Vector &second) {
+        return 0.5 * Modul(ModuleOfVectorComposition(first, second));
+    }
+
+    double Area(Polygon polygon) {
+        double sum1 = 0;
+        double sum2 = 0;
+        int N = polygon.GetNumberOfVertices();
+        for (int i = 0; i <= N - 2; ++i) {
+            sum1 += polygon.GetVertices()[i].GetX() * polygon.GetVertices()[i + 1].GetY();
+            sum2 += polygon.GetVertices()[i + 1].GetX() * polygon.GetVertices()[i].GetY();
+        }
+        return 0.5 * Modul((sum1 + polygon.GetVertices()[N - 1].GetX() * polygon.GetVertices()[0].GetY() - sum2 -
+                            polygon.GetVertices()[N - 1].GetY() * polygon.GetVertices()[0].GetX()));
+    }
+
+    Segment::Segment(Point A, Point B) : A_(A), B_(B) {
+
+    }
+
+    Segment::Segment(int x1, int y1, int x2, int y2) : A_(Point(x1, y1)), B_(Point(x2, y2)) {
+
+    }
+
+    AbstractShape *const Segment::Move(const Vector &vector) {
+        int x1 = A_.GetX() + vector.GetX();
+        int x2 = B_.GetX() + vector.GetX();
+        int y1 = A_.GetY() + vector.GetY();
+        int y2 = B_.GetY() + vector.GetY();
+        Point X(x1, y1);
+        Point Y(x2, y2);
+        Segment segment(X, Y);
+        *this = segment;
+        return this;
+    }
+
+    bool Segment::ContainsPoint(const Point &point) const {
+        if (A_.GetX() == B_.GetX() && A_.GetY() == B_.GetY()) {
+            return (A_.GetX() == point.GetX() && A_.GetY() == point.GetY());
+        }
+        return (ISPointInSegment(point, A_, B_));
+    }
+
+    bool Segment::CrossSegment(const Segment &segment) const {
+        return (SegmentsIntersect(segment.GetA(), segment.GetB(), A_, B_));
+    }
+
+    AbstractShape *Segment::Clone() const {
+        Segment *answer = new Segment(A_, B_);
+        return answer;
+    }
+
+    void Segment::Print() {
+        std::cout << A_.GetX() << " " << A_.GetY() << " " << B_.GetX() << " " << B_.GetY() << std::endl;
+    }
+
+    Line::Line(double const &A, double const &B, double const &C) : A_(A), B_(B), C_(C) {
+
+    }
+
+    Line::Line(Point X, Point Y) : A_(Y.GetY() - X.GetY()), B_(X.GetX() - Y.GetX()),
+                                   C_(X.GetY() * Y.GetX() - X.GetX() * Y.GetY()) {
+        X_ = X;
+        Y_ = Y;
+    }
+
+    double Line::GetA() const {
+        return A_;
+    }
+
+    double Line::GetB() const {
+        return B_;
+    }
+
+    double Line::GetC() const {
+        return C_;
+    }
+
+    AbstractShape *const Line::Move(const Vector &vector) {
+        double x1 = X_.GetX() + vector.GetX();
+        double y1 = X_.GetY() + vector.GetY();
+        double x2 = Y_.GetX() + vector.GetX();
+        double y2 = Y_.GetY() + vector.GetY();
+        Point first(x1, y1);
+        Point second(x2, y2);
+        Line line(first, second);
+        X_ = first;
+        Y_ = second;
+        line.X_ = X_;
+        line.Y_ = Y_;
+        *this = line;
+        return this;
+    }
+
+    bool Line::ContainsPoint(const Point &point) const {
+        if (X_.GetX() == Y_.GetX() && Y_.GetY() == X_.GetY()) {
+            return (X_.GetX() == point.GetX() && X_.GetY() == point.GetY());
+        }
+        return (A_ * point.GetX() + B_ * point.GetY() + C_ == 0);
+    }
+
+    bool Line::CrossSegment(const Segment &segment) const {
+        if (X_.GetX() == Y_.GetX() && Y_.GetY() == X_.GetY()) {
+            return (ISPointInSegment(X_, segment.GetA(), segment.GetB()));
+        }
+        Vector AP1(X_, segment.GetA());
+        Vector AP2(X_, segment.GetB());
+        Vector AB(X_, Y_);
+        return ModuleOfVectorComposition(AP1, AB) * ModuleOfVectorComposition(AP2, AB) <= 0;
+    }
+
+    AbstractShape *Line::Clone() const {
+        Line *line = new Line(A_, B_, C_);
+        line->X_ = this->X_;
+        line->Y_ = this->Y_;
+        return line;
+    }
+
+    void Line::Print() {
+        Point firstOld = X_;
+        Point secondOld = Y_;
+        std::cout << firstOld.GetX() << " " << firstOld.GetY() << " " << secondOld.GetX() << " " << secondOld.GetY()
+                  << std::endl;
+    }
+
+    Ray::Ray(Point A, Point B) : Begining_(A), PointForDirection_(B) {
+
+    }
+
+    AbstractShape *const Ray::Move(const Vector &vector) {
+        Point first(Begining_.GetX() + vector.GetX(), Begining_.GetY() + vector.GetY());
+        Point second(PointForDirection_.GetX() + vector.GetX(), PointForDirection_.GetY() + vector.GetY());
+        Ray ray(first, second);
+        *this = ray;
+        return this;
+    }
+
+    bool Ray::ContainsPoint(const Point &point) const {
+        return ISPointInRay(point, Begining_, PointForDirection_);
+    }
+
+    Point IntersectionOfLines(const Line &first, const Line &second) {
+        if (first.GetA() == 0) {
+            double y = -first.GetC() / first.GetB();
+            double x = first.GetC() * second.GetB() / (first.GetB() * second.GetA()) - second.GetC() / second.GetA();
+            Point answer(x, y);
+            return answer;
+        }
+        double b = second.GetB() - first.GetB() * second.GetA() / first.GetA();
+        double a = first.GetC() * second.GetA() / first.GetA() - second.GetC();
+        double y = a / b;
+        double x = -first.GetB() * y / first.GetA() - first.GetC() / first.GetA();
+        Point answer(x, y);
+        return answer;
+    }
+
+    bool Ray::CrossSegment(const Segment &segment) const {
+        Line lineOfsegment(segment.GetA(), segment.GetB());
+        Line lineOfRay(Begining_, PointForDirection_);
+        if (!lineOfRay.CrossSegment(segment)) {
+            return false;
+        }
+        if (lineOfsegment.GetA() * lineOfRay.GetB() == lineOfRay.GetA() * lineOfsegment.GetB() &&
+            lineOfsegment.GetB() * lineOfRay.GetC() == lineOfRay.GetB() * lineOfsegment.GetC()) {
+            return (ISPointInRay(segment.GetB(), Begining_, PointForDirection_) ||
+                    ISPointInRay(segment.GetA(), Begining_, PointForDirection_));
+        }
+        Point answer = IntersectionOfLines(lineOfRay, lineOfsegment);
+        return ISPointInRay(answer, Begining_, PointForDirection_);
+    }
+
+    AbstractShape *Ray::Clone() const {
+        Ray *ray = new Ray(Begining_, PointForDirection_);
+        return ray;
+    }
+
+    void Ray::Print() {
+        std::cout << Begining_.GetX() << " " << Begining_.GetY() << " " << PointForDirection_.GetX() << " "
+                  << PointForDirection_.GetY() << std::endl;
+    }
+
+    Polygon::Polygon(std::vector<Point> points) : vertices(points) {
+
+    }
+
+    Point Ray::GetBegining() const {
+        return Begining_;
+    }
+
+    Point Ray::GetPointForDirection() const {
+        return PointForDirection_;
+    }
+
+
+    double DistanceForLine(Point X, Point A, Point B) {
+        Vector PP1(X, A);
+        Vector PP2(X, B);
+        Vector P1P2(A, B);
+        return Modul(ModuleOfVectorComposition(PP1, PP2) / LengthOfVector(P1P2));
+    }
+
+    double DistanceForRay(Point X, Point A, Point B) {
+        Vector PP1(X, A);
+        Vector P1P2(A, B);
+        Vector P1P(A, X);
+        if (Scalar(P1P2, P1P) >= 0) {
+            return DistanceForLine(X, A, B);
+        } else {
+            return LengthOfVector(PP1);
+        };
+    }
+
+    double DistanceForSegment(Point X, Point A, Point B) {
+        Vector PP1(X, A);
+        Vector PP2(X, B);
+        Vector P1P2(A, B);
+        Vector P1P(A, X);
+        Vector P2P1(B, A);
+        Vector P2P(B, X);
+        if ((Scalar(P1P2, P1P) >= 0) && (Scalar(P2P1, P2P) >= 0)) {
+            return DistanceForLine(X, A, B);
+        } else {
+            return std::min(LengthOfVector(PP1), LengthOfVector(PP2));
+        }
+    }
+
+    int Polygon::GetNumberOfVertices() const {
+        return vertices.size();
+    }
+
+    AbstractShape *const Polygon::Move(const Vector &vector) {
+        int n = GetNumberOfVertices();
+        std::vector<Point> newPolygon(n);
+        for (int i = 0; i < n; ++i) {
+            double x = vertices[i].GetX() + vector.GetX();
+            double y = vertices[i].GetY() + vector.GetY();
+            Point A(x, y);
+            newPolygon[i] = A;
+        }
+        Polygon polygon(newPolygon);
+        *this = polygon;
+        return this;
+    }
+
+    bool Polygon::ContainsPoint(const Point &point) const {
+        return IsPointInside(point);
+    }
+
+    bool Polygon::CrossSegment(const Segment &segment) const {
+        int N = vertices.size();
+        for (int i = 0; i < N; ++i) {
+            Segment segmentNew(vertices[i], vertices[(i + 1) % N]);
+            if (segmentNew.CrossSegment(segment)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    Polygon::Polygon(std::vector<Point> vector, int numberOfvert) : vertices(vector) {
+
+    }
+
+    AbstractShape *Polygon::Clone() const {
+        Polygon *polygon = new Polygon(vertices);
+        return polygon;
+    }
+
+    void Polygon::Print() {
+        int n = GetNumberOfVertices();
+        std::cout << vertices.size() << std::endl;
+        for (int i = 0; i < n; ++i) {
+            std::cout << vertices[i].GetX() << " " << vertices[i].GetY() << " ";
+        }
+        std::cout << std::endl;
+    }
+
+    double AngleBetweenSegments(const Point &A, const Point &B, const Point &C) {
+        Vector AC_(A, C);
+        Vector AB_(A, B);
+        double AB = LengthOfVector(AB_);
+        double AC = LengthOfVector(AC_);
+        int minus = 0;
+        if (ModuleOfVectorComposition(AB_, AC_) >= 0) {
+            minus = 1;
+        } else {
+            minus = -1;
+        }
+        return minus * acos(Scalar(AB_, AC_) / (AB * AC));
+    }
+
+    bool Polygon::IsPointInside(const Point point) const {
+        int N = vertices.size();
+        double angle = 0;
+        for (int i = 0; i < N; ++i) {
+            if (ISPointInSegment(point, vertices[i], vertices[(i + 1) % N])) {
+                return true;
+            }
+            angle += AngleBetweenSegments(point, vertices[i], vertices[(i + 1) % N]);
+        }
+        return (round(fabs(angle / (6.28318530718))) == 1);
+    }
+
+    Circle::Circle(int x, int y, int RNew) : x_(x), y_(y), R(RNew) {
+
+    }
+
+    Circle::Circle(Point centre, int R_) : x_(centre.GetX()), y_(centre.GetY()), R(R_) {
+
+    }
+
+    int Circle::GetCentreX() const {
+        return x_;
+    }
+
+    int Circle::GetCentreY() const {
+        return y_;
+    }
+
+    int Circle::GetCentreR() const {
+        return R;
+    }
+
+    bool Circle::PointOnCircle(const Point &point) const {
+        return (pow((x_ - point.GetX()), 2) + pow((y_ - point.GetY()), 2) == pow(R, 2));
+    }
+
+    Point IntersectionPointLines(Line first, Line second) {
+        Point Answer((second.GetB() * first.GetC() - second.GetC() * first.GetB()) /
+                     (first.GetB() * second.GetA() - first.GetA() * second.GetB()),
+                     (second.GetC() * first.GetA() - first.GetC() * second.GetA()) /
+                     (first.GetB() * second.GetA() - first.GetA() * second.GetB()));
+        return Answer;
+    }
+
+    AbstractShape *const Circle::Move(const Vector &vector) {
+        Point Centre(GetCentreX(), GetCentreY());
+        Centre.Move(vector);
+        Circle circle(Centre, R);
+        *this = circle;
+        return this;
+    }
+
+    bool Circle::ContainsPoint(const Point &point) const {
+        Point O(x_, y_);
+        Segment OP(point, O);
+        double a = LengthOfSegment(OP);
+        bool s = LengthOfSegment(OP) <= R;
+        return (LengthOfSegment(OP) <= R);
+    }
+
+    bool Circle::CrossSegment(const Segment &segment) const {
+        Point O(x_, y_);
+        Segment OA(O, segment.GetA());
+        Segment OB(O, segment.GetB());
+        return (DistanceForSegment(O, segment.GetB(), segment.GetA()) <= R &&
+                ((LengthOfSegment(OA) >= R) || (LengthOfSegment(OB) >= R)));
+    }
+
+    AbstractShape *Circle::Clone() const {
+        Point Centre(GetCentreX(), GetCentreY());
+        Circle *circle = new Circle(Centre, R);
+        return circle;
+    }
+
+    void Circle::Print() {
+        std::cout << GetCentreX() << " " << GetCentreY() << " " << GetCentreR();
+    }
+
+    double Circle::ArcLength(const Point &first, const Point &second) const {
+        Segment AB(first, second);
+        double AB_ = LengthOfSegment(AB);
+        double alpha = acos((2 * R * R - AB_ * AB_) / 2 * R * R);
+        return R * alpha;
+    }
+
+    double Circle::SegmentOfTouch(const Point &X) const {
+        Point O(x_, y_);
+        Segment OX(X, O);
+        return sqrt(R * R + pow(LengthOfSegment(OX), 2));
+    }
+
+    std::pair<double, double> QuadraticEquation(const double &a, const double &b, const double &c) {
+        double D = b * b - 4 * a * c;
+        return {(-b + sqrt(D)) / (2 * a), (-b + sqrt(D)) / (2 * a)};
+    }
+
+    double Distance(Line first, Line second) {
+        if (first.GetA() / second.GetA() >= 1) {
+            return abs(first.GetC() / (first.GetA() / second.GetA()) - second.GetC()) /
+                   (sqrt(pow(first.GetA(), 2) + pow(first.GetB(), 2)));
+        } else {
+            return abs(first.GetC() - second.GetC() / (second.GetA() / first.GetA())) /
+                   (sqrt(pow(first.GetA(), 2) + pow(first.GetB(), 2)));
+        }
+    }
+
+    double DistanceBetweenSegments(Point A, Point B, Point C, Point D) {
+        if (SegmentsIntersect(A, B, C, D)) {
+            return 0.0000000;
+        }
+        double minFirst = std::min(DistanceForSegment(A, C, D), DistanceForSegment(B, C, D));
+        double minSecond = std::min(DistanceForSegment(C, A, B), DistanceForSegment(D, A, B));
+        return std::min(minFirst, minSecond);
+    }
+
+    int SignOf(double a) {
+        if (a > 0) {
+            return 1;
+        } else if (a == 0) {
+            return 0;
+        } else {
+            return -1;
+        }
+    }
+
+    bool IsPolygonConvex(Polygon polygon) {
+        int N = polygon.GetNumberOfVertices();
+        Vector A1B1(polygon.GetVertices()[0], polygon.GetVertices()[1]);
+        Vector B1C1(polygon.GetVertices()[1], polygon.GetVertices()[2]);
+        double sign = SignOf(ModuleOfVectorComposition(A1B1, B1C1));
+        for (int i = 1; i < N; ++i) {
+            Vector AB(polygon.GetVertices()[i], polygon.GetVertices()[(i + 1) % N]);
+            Vector BC(polygon.GetVertices()[(i + 1) % N], polygon.GetVertices()[(i + 2) % N]);
+            if (sign != 0 && SignOf(ModuleOfVectorComposition(AB, BC)) != 0 &&
+                SignOf(ModuleOfVectorComposition(AB, BC)) != sign) {
+                return false;
+            }
+            if (SignOf(ModuleOfVectorComposition(AB, BC)) != 0) {
+                sign = SignOf(ModuleOfVectorComposition(AB, BC));
+            }
+        }
+        return true;
+    }
+}
+
+void CheckFunctions(const geometry::AbstractShape *shape, const geometry::Point &A, const geometry::Point &B) {
+    if (shape->ContainsPoint(A)) {
+        std::cout << "Given shape contains point A" << std::endl;
+    } else {
+        std::cout << "Given shape does not contain point A" << std::endl;
+    }
+
+    geometry::Segment AB(A, B);
+    if (shape->CrossSegment(AB)) {
+        std::cout << "Given shape crosses segment AB" << std::endl;
+    } else {
+        std::cout << "Given shape does not cross segment AB" << std::endl;
+    }
+
+    geometry::Vector ab(A, B);
+    geometry::AbstractShape *clonedShape = shape->Clone();
+    clonedShape->Move(ab)->Print();
+    delete clonedShape;
+}
+
+int main() {
+    geometry::AbstractShape *shape;
+    char command[10];
+    std::cin >> command;
+    if (!strcmp(command, "point")) {
+        int x, y;
+        std::cin >> x >> y;
+        shape = new geometry::Point(x, y);
+    } else if (!strcmp(command, "segment")) {
+        int x1, y1, x2, y2;
+        std::cin >> x1 >> y1 >> x2 >> y2;
+        shape = new geometry::Segment(geometry::Point(x1, y1), geometry::Point(x2, y2));
+    } else if (!strcmp(command, "ray")) {
+        int x1, y1, x2, y2;
+        std::cin >> x1 >> y1 >> x2 >> y2;
+        shape = new geometry::Ray(geometry::Point(x1, y1), geometry::Point(x2, y2));
+    } else if (!strcmp(command, "line")) {
+        int x1, y1, x2, y2;
+        std::cin >> x1 >> y1 >> x2 >> y2;
+        shape = new geometry::Line(geometry::Point(x1, y1), geometry::Point(x2, y2));
+    } else if (!strcmp(command, "polygon")) {
+        size_t n_points;
+        std::cin >> n_points;
+        std::vector<geometry::Point> points;
+        points.reserve(n_points);
+        for (size_t i = 0; i < n_points; ++i) {
+            int x, y;
+            std::cin >> x >> y;
+            points.push_back(geometry::Point(x, y));
+        }
+        shape = new geometry::Polygon(points, n_points);
+    } else if (!strcmp(command, "circle")) {
+        int x, y;
+        std::cin >> x >> y;
+        geometry::Point center(x, y);
+        int radius;
+        std::cin >> radius;
+        shape = new geometry::Circle(center, radius);
+    } else {
+        std::cerr << "Undefined command" << std::endl;
+        return 1;
+    }
+
+    int ax, ay, bx, by;
+    std::cin >> ax >> ay >> bx >> by;
+    geometry::Point A(ax, ay), B(bx, by);
+
+    CheckFunctions(shape, A, B);
+
+    return 0;
+}

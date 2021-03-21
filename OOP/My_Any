@@ -1,0 +1,101 @@
+#ifndef ANY_ANY_H
+#define ANY_ANY_H
+
+#include <iostream>
+#include <memory>
+
+class Base {
+public:
+    virtual ~Base() = default;
+
+    virtual std::unique_ptr<Base> Clone() const = 0;
+};
+
+template<class T>
+class Derived : public Base {
+public:
+    T value;
+
+    Derived() = default;
+
+    Derived(T value_new) : value(std::move(value_new)) {
+    }
+
+    std::unique_ptr<Base> Clone() const {
+        return  std::make_unique<Derived<T>>(*this);
+    }
+};
+
+class Any;
+
+template<class T>
+T any_cast(const Any &value_new);
+
+class Any {
+    std::unique_ptr<Base> ptr;
+
+public:
+    template<class U>
+    Any &operator=(const U &value_new) {
+        ptr = std::make_unique<Derived<U>>(value_new);
+        return *this;
+    }
+
+    Any() = default;
+
+    Any(const Any &other) : ptr(other.ptr->Clone()) {
+    }
+
+    Any &operator=(const Any &other) {
+        Any new_any = other;
+        Swap(new_any);
+        return *this;
+    }
+
+    template<class T>
+    Any(const T &value_new) {
+        ptr = std::make_unique<Derived<T>>(value_new);
+    }
+
+    Any(Any &&other) noexcept = default;
+
+    Any &operator=(Any &&other) noexcept = default;
+
+    void Swap(Any &other) {
+        std::swap(ptr, other.ptr);
+    }
+
+    void Reset() {
+        ptr.reset();
+    }
+
+
+    bool HasValue() {
+        return ptr.get() != nullptr;
+    }
+
+    template<class T>
+    friend T any_cast(const Any &value_new);
+
+    ~Any() {
+        this->Reset();
+    }
+};
+
+class BadAnyCast : public std::logic_error {
+public:
+    BadAnyCast() : logic_error("I fell") {
+    }
+};
+
+template<class T>
+T any_cast(const Any &value_new) {
+    const Derived<T> *tmp = dynamic_cast<const Derived<T> *>(value_new.ptr.get());
+    if (!tmp) {
+        throw BadAnyCast();
+    }
+    return tmp->value;
+}
+
+#endif //ANY_ANY_H
+

@@ -1,0 +1,54 @@
+#include <iostream>
+#include <vector>
+
+typedef int weight;
+const int max_size = 30000;
+struct Edge {
+    int from;
+    int to;
+    weight capacity;
+};
+
+bool Relax(std::vector<int> &distance, const Edge &edge) {
+    if (distance[edge.from] < max_size) {
+        if (distance[edge.to] > distance[edge.from] + edge.capacity) {
+            distance[edge.to] = distance[edge.from] + edge.capacity;
+            return true;
+        }
+    }
+    return false;
+}
+
+std::vector<int> BellmanFord(const std::vector<Edge> &graph, int top, int size) {
+    std::vector<int> distance(size, max_size);
+    distance[top] = 0;
+    for (int j = 0; j < size - 1; ++j) {
+        bool do_something = false;
+        for (const Edge &edge : graph) {
+            if(Relax(distance, edge)){
+                do_something = true;
+            }
+        }
+        if (!do_something) {
+            break;
+        }
+    }
+    return distance;
+}
+
+int main() {
+    int n, m;
+    std::cin >> n >> m;
+    std::vector<Edge> graph(n);
+    for (int i = 0; i < m; ++i) {
+        int from, to, weight;
+        std::cin >> from >> to >> weight;
+        graph.push_back(Edge{from - 1, to - 1, weight});
+    }
+
+    std::vector<int> answer = BellmanFord(graph, 0, n);
+    for (auto len : answer) {
+        std::cout << len << " ";
+    }
+}
+

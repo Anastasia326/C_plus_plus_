@@ -1,0 +1,124 @@
+#include <iostream>
+#include <vector>
+
+size_t ToPowOfTwo(size_t x) {
+    --x;
+    for (size_t i = 1; i < 32; i <<= 1u) {
+        x |= (x >> i);
+    }
+    return ++x;
+}
+
+template<typename Element>
+class MinOperation {
+    const Element neutral = 0;
+
+    Element operator()(const Element &first, const Element &second) {
+        return first + second;
+    }
+};
+
+template<typename Element>
+class UpdateSumOperation {
+    void operator()(Element &element, Element value) {
+        element += value;
+    }
+};
+
+template<typename Element, class Operation, class UpdateOperation>
+class SegmentTree {
+    size_t size_;
+    std::vector<Element> tree_;
+    mutable std::vector<Element> modification_;
+
+    static size_t Left(size_t i) {
+        return 2 * i + 1;
+    }
+
+
+    static size_t Right(size_t i) {
+        return 2 * i + 2;
+    }
+
+    void Update(size_t left, size_t right, Element value, size_t vertex,
+                size_t now_left, size_t now_right) {
+        if (left > right) {
+            return Operation::neutral;
+        }
+        if (left == now_left && right == now_right) {
+            UpdateOperation(tree_[vertex], (right - left + 1) * value);
+            UpdateOperation(modification_[vertex], value);
+        } else {
+            size_t average = (now_left + now_right) / 2;
+            if (modification_[vertex] != 0) {
+                UpdateOperation(tree_[Left(vertex)],
+                                (average - now_left + 1) * modification_[vertex]);
+                UpdateOperation(tree_[Right(vertex)],
+                                (now_right - average) * modification_[vertex]);
+                Push(vertex);
+            }
+            Update(left, std::min(right, average), value, Left(vertex), now_left, average);
+            Update(std::max(left, average + 1), right, value, Right(vertex), average + 1,
+                   now_right);
+            tree_[vertex] = Operation(tree_[Left(vertex)], tree_[Right(vertex)]);
+        }
+    }
+
+    Element Sum(size_t left, size_t right, size_t vertex,
+                size_t now_left, size_t now_right) const {
+        if (left > right) {
+            return Operation::neutral;
+        }
+        if (left == now_left && right == now_right) {
+            return tree_[vertex];
+        } else {
+            size_t average = (now_right + now_left) / 2;
+            if (modification_[vertex] != 0) {
+                UpdateOperation(tree_[Left(vertex)],
+                                (average - now_left + 1) * modification_[vertex]);
+                UpdateOperation(tree_[Right(vertex)],
+                                (now_right - average) * modification_[vertex]);
+                Push(vertex);
+            }
+            return Sum(left, std::min(right, average), Left(vertex), now_left, average) +
+                   Sum(std::max(left, average + 1), right, Right(vertex), average + 1,
+                       now_right);
+        }
+    }
+
+    void BuildSegmentTree(const std::vector<Element> &tops, size_t vertex, size_t left,
+                          size_t right) {
+        if (left == right) {
+            tree_[vertex] = tops[left];
+        } else {
+            size_t average = (left + right) / 2;
+            BuildSegmentTree(tops, Left(vertex), left, average);
+            BuildSegmentTree(tops, Right(vertex), average + 1, right);
+            tree_[vertex] = Operation(tree_[Left(vertex)], tree_[Right(vertex)]);
+        }
+    }
+
+    void Push(long long int vertex) const {
+        if (modification_[vertex] != 0) {
+            modification_[Right(vertex)] += modification_[vertex];
+            modification_[Left(vertex)] += modification_[vertex];;
+            modification_[vertex] = 0;
+        }
+    }
+
+public:
+    explicit SegmentTree(const std::vector<Element> &tops) : size_(tops.size()) {
+        tree_.resize(2 * ToPowOfTwo(tops.size()));
+        modification_.resize(2 * ToPowOfTwo(tops.size()), Operation::neutral);
+        BuildSegmentTree(tops, 0, 0, size_ - 1);
+    }
+
+    void Update(size_t left, size_t right, Element value) {
+        Update(left, right, value, 0, 0, size_ - 1);
+    }
+
+    Element Sum(size_t left, size_t right) const {
+        return Sum(left, right, 0, 0, size_ - 1);
+    }
+};
+

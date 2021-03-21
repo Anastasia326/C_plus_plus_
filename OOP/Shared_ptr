@@ -1,0 +1,232 @@
+#ifndef SHARED_PTR_H
+#define SHARED_PTR_H
+
+#include <utility>
+#include <exception>
+#include <stdexcept>
+
+class BadWeakPtr : public std::logic_error {
+public:
+    BadWeakPtr() : logic_error("I fell") {
+    }
+};
+
+
+template<typename T>
+class WeakPtr;
+
+struct Counter {
+    size_t counter_ = 0;
+    size_t weak_counter = 0;
+};
+
+template<class T>
+class SharedPtr {
+    Counter *counter;
+    T *ptr_;
+
+    void DeletePtr() {
+        if (counter != nullptr) {
+            if (counter->counter_ != 0) {
+                --(counter->counter_);
+            }
+            if (counter->counter_ == 0) {
+                delete ptr_;
+                if (counter->weak_counter == 0) {
+                    delete counter;
+                }
+            }
+        }
+    }
+
+public:
+
+    SharedPtr() : counter(nullptr), ptr_(nullptr) {
+    }
+
+    SharedPtr(std::nullptr_t) : counter(nullptr), ptr_(nullptr) {
+    }
+
+    explicit SharedPtr(T *other_ptr) : counter(nullptr), ptr_(nullptr) {
+        if (other_ptr != nullptr) {
+            counter = new Counter;
+            ptr_ = other_ptr;
+            ++(counter->counter_);
+        }
+    }
+
+    SharedPtr(const SharedPtr<T> &other) : counter(other.counter), ptr_(other.ptr_) {
+        if (counter != nullptr) {
+            ++(counter->counter_);
+        }
+    }
+
+    SharedPtr &operator=(const SharedPtr &other) {
+        SharedPtr new_shared(other);
+        Swap(new_shared);
+        return *this;
+    }
+
+    SharedPtr(SharedPtr &&other) noexcept : counter(other.counter), ptr_(other.ptr_) {
+        other.counter = nullptr;
+        other.ptr_ = nullptr;
+    }
+
+    SharedPtr &operator=(SharedPtr &&other) noexcept {
+        Swap(other);
+        return *this;
+    }
+
+    explicit SharedPtr(const WeakPtr<T> &other) {
+        if (other.Expired()) {
+            throw BadWeakPtr();
+        } else {
+            counter = other.counter;
+            ptr_ = other.ptr_;
+            if (counter != nullptr) {
+                ++(counter->counter_);
+            }
+        }
+    }
+
+    ~SharedPtr() {
+        DeletePtr();
+    }
+
+    void Reset(T *other_ptr = nullptr) {
+        SharedPtr new_shared(other_ptr);
+        Swap(new_shared);
+    }
+
+    void Swap(SharedPtr<T> &other) {
+        std::swap(counter, other.counter);
+        std::swap(ptr_, other.ptr_);
+    }
+
+    T *Get() const {
+        if (counter != nullptr) {
+            return ptr_;
+        }
+        return nullptr;
+    }
+
+    size_t UseCount() const {
+        if (counter != nullptr) {
+            return (counter->counter_);
+        }
+        return 0;
+    }
+
+    T &operator*() const {
+        return *(ptr_);
+    }
+
+    T *operator->() const {
+        return ptr_;
+    }
+
+    explicit operator bool() const {
+        return ptr_ != nullptr;
+    }
+
+    friend WeakPtr<T>;
+};
+
+template<class T>
+class WeakPtr {
+    Counter *counter;
+    T *ptr_;
+
+    void DeleteWeakPtr() {
+        if (counter != nullptr) {
+            if (counter->weak_counter != 0) {
+                --(counter->weak_counter);
+            }
+            if (counter->counter_ == 0 && counter->weak_counter == 0) {
+                delete counter;
+            }
+        }
+    }
+
+public:
+
+    WeakPtr() : counter(nullptr), ptr_(nullptr) {
+    }
+
+    WeakPtr(const WeakPtr &other) : counter(other.counter), ptr_(other.ptr_) {
+        if (counter != nullptr) {
+            ++(counter->weak_counter);
+        }
+    }
+
+    WeakPtr &operator=(const WeakPtr &other) {
+        WeakPtr new_shared(other);
+        Swap(new_shared);
+        return *this;
+    }
+
+    WeakPtr(WeakPtr &&other) : counter(other.counter), ptr_(other.ptr_) {
+        other.ptr_ = nullptr;
+        other.counter = nullptr;
+    }
+
+    WeakPtr &operator=(WeakPtr &&other) {
+        Swap(other);
+        return *this;
+    }
+
+    ~WeakPtr() {
+        DeleteWeakPtr();
+    }
+
+    WeakPtr(const SharedPtr<T> &other) : counter(other.counter), ptr_(other.ptr_) {
+        if (counter != nullptr) {
+            ++(counter->weak_counter);
+        }
+    }
+
+    WeakPtr &operator=(const SharedPtr<T> &other) {
+        DeleteWeakPtr();
+        counter = other.counter;
+        ptr_ = other.ptr_;
+        if (counter != nullptr) {
+            ++(counter->weak_counter);
+        }
+        return *this;
+    }
+
+    void Swap(WeakPtr<T> &other) {
+        std::swap(counter, other.counter);
+        std::swap(ptr_, other.ptr_);
+    }
+
+    void Reset() {
+        DeleteWeakPtr();
+        counter = nullptr;
+        ptr_ = nullptr;
+    }
+
+    size_t UseCount() const {
+        return counter == nullptr ? 0 : (counter->counter_);
+    }
+
+    bool Expired() const {
+        if (counter != nullptr) {
+            return (counter->counter_) == 0;
+        }
+        return true;
+    }
+
+    SharedPtr<T> Lock() const {
+        if (Expired()) {
+            return nullptr;
+        } else {
+            return SharedPtr<T>(*this);
+        }
+    }
+
+    friend SharedPtr<T>;
+};
+
+#endif // SHARED_PTR_H
+

@@ -1,0 +1,66 @@
+#include <iostream>
+#include <list>
+#include <vector>
+
+template<class Data>
+class HashTable{
+    std::vector<std::list<Data>> buckets_;
+    size_t size_of_table_ = 0;
+public:
+    explicit HashTable(size_t size) {
+        this->buckets_.resize(size);
+    }
+
+    void Insert(const Data &word) {
+        unsigned int word_hash = Hash(word);
+        const size_t index = word_hash % this->buckets_.size();
+        if(this->Find(word)) {
+            return;
+        }
+        this->buckets_[index].push_back(word);
+        if(buckets_[index].size()/buckets_.size() >= 3) {
+            this->ReHash();
+        }
+        ++this->size_of_table;
+    }
+
+    void Erase(const Data &word) {
+        if(!Find(word)) {
+            return;
+        }
+        Data word_hash = Hash(word);
+        size_t index = word_hash(word) % this->buckets_.size();
+        auto iterator = std::find(this->buckets_[index].begin(),this->buckets_[index].end(), word);
+        this->buckets_[word_hash(word) % this->buckets_.size()].erase(iterator);
+        --this->size_of_table;
+    }
+
+    bool Find(const Data &word) {
+        Data word_hash = Hash(word);
+        size_t index = word_hash(word) % this->buckets_.size();
+        if(this->buckets_[index].end() == this->buckets_[index].begin()) {
+            return false;
+        }
+        auto iterator = std::find(this->buckets_[index].begin(),this->buckets_[index].end(), word);
+        return iterator != this->buckets_[index].end();
+    }
+
+    void ReHash() {
+        HashTable new_set(this->buckets_.size()*2);
+        size_t max_size = this->buckets_.size();
+        for(size_t i = 0; i < max_size; ++i) {
+            size_t  size = buckets_[i].size();
+            for(size_t j = 0; j < size; ++j) {
+                new_set.Insert(this->buckets_[i].back());
+                this->buckets_[i].pop_back();
+            }
+        }
+        std::swap(this->buckets_,new_set.buckets_);
+        std::swap(this->size_of_table, new_set.size_of_table);
+        std::swap(this->buckets_.size(), new_set.buckets_.size());
+    }
+};
+
+int main() {
+    HashTable<int> hash(10);
+}

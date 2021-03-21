@@ -1,0 +1,47 @@
+#include <utility>
+#include <cmath>
+#include <iostream>
+#include <vector>
+
+template< class RandomIt >
+void quickSort(RandomIt left, RandomIt right) {
+    RandomIt i = left;
+    RandomIt j = right;
+    int x = *((right - left) / 2 + left);
+
+    while (i <= j) {
+        while (*i < x)
+            ++i;
+        while (*j > x)
+            --j;
+
+        if (i < j) {
+            std::swap(*i, *j);
+        }
+        if (i <= j) {
+            --j;
+            ++i;
+        }
+    }
+    if (i < right) {
+        quickSort(i, right);
+    }
+    if (left < j) {
+        quickSort(left, j);
+    }
+}
+
+int main() {
+    int n;
+    std::cin >> n;
+    std::vector<int> array(n);
+    for(int i = 0; i < n; ++i) {
+        std::cin >> array[i];
+    }
+
+    quickSort(array.begin(), std::prev(array.end()));
+
+    for(int i = 0; i < n; ++i) {
+        std::cout << array[i] << " ";
+    }
+}

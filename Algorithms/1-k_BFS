@@ -1,0 +1,46 @@
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <algorithm>
+
+int Distance(const std::vector<std::vector<std::pair<int, int>>> &graph, int start, int finish) {
+    const size_t size = graph.size();
+    const size_t max_size = 31;
+    std::vector<std::queue<int>> distance(max_size);
+    distance[0].push(start);
+    std::vector<int> used(size, 0);
+
+    for (size_t i = 0; i < 30 * (size - 1); ++i) {
+        while (!distance[i % max_size].empty()) {
+            int cur = distance[i % max_size].front();
+            distance[i % max_size].pop();
+            if (cur != finish) {
+                if (used[cur] == 0) {
+                    for (auto j : graph[cur]) {
+                        size_t length = i % max_size + j.second;
+                        distance[length % max_size].push(j.first);
+                    }
+                    used[cur] = 1;
+                }
+            } else {
+                return i;
+            }
+        }
+    }
+    return -1;
+}
+
+int main() {
+    std::ios_base::sync_with_stdio(false);
+    int n, m, first, second;
+    std::cin >> n >> m >> first >> second;
+    std::vector<std::vector<std::pair<int, int>>> graph(n);
+    for (int i = 0; i < m; ++i) {
+        int top_first, top_second, weight;
+        std::cin >> top_first >> top_second >> weight;
+        graph[top_first - 1].push_back(std::make_pair(top_second - 1, weight));
+    }
+    int answer = Distance(graph, first - 1, second - 1);
+    std::cout << answer;
+}
+

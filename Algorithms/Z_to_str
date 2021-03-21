@@ -1,0 +1,63 @@
+#include <iostream>
+#include <vector>
+#include <string>
+
+std::vector<size_t> DoFromZFunctionPrefixFunction(const std::vector<size_t> &z_function) {
+    const auto size = z_function.size();
+    std::vector<size_t> prefix_function(size, 0);
+    for (size_t i = 1; i < size; ++i) {
+        for (int j = z_function[i] - 1; j >= 0; --j) {
+            if (prefix_function[i + j] > 0) {
+                break;
+            } else {
+                prefix_function[i + j] = j + 1;
+            }
+        }
+    }
+    return prefix_function;
+}
+
+std::string DoStringFromPrefixFunction(const std::vector<size_t> &prefix) {
+    if (prefix.empty()) {
+        return "";
+    }
+    const size_t size = prefix.size();
+    const size_t number_of_letters_in_alphabet = 26;
+    std::string answer = "a";
+    for (int i = 1; i < size; ++i) {
+        if (prefix[i] != 0) {
+            answer += answer[prefix[i] - 1];
+        } else {
+            // смотрим, какие буквы мы уже встретили в строке
+            std::vector<bool> use_letter(number_of_letters_in_alphabet, false);
+            int now_prefix = prefix[i - 1];
+            while (now_prefix > 0) {
+                use_letter[answer[now_prefix] - 'a'] = true;
+                now_prefix = prefix[now_prefix - 1];
+            }
+            //ищем минимальную букву, которую не встречали, чтобы сохранялся лексикографический порядок
+            char symbol_we_do_not_see = 'b';
+            while (use_letter[symbol_we_do_not_see - 'a']) {
+                ++symbol_we_do_not_see;
+            }
+            answer += symbol_we_do_not_see;
+        }
+    }
+    return answer;
+}
+
+std::string DoStringFromZFunction(const std::vector<size_t> &z_function) {
+    std::vector<size_t> prefix_function = DoFromZFunctionPrefixFunction(z_function);
+    return DoStringFromPrefixFunction(prefix_function);
+}
+
+int main() {
+    int n;
+    std::cin >> n;
+    std::vector<size_t> z_function(n);
+    for (int i = 0; i < n; ++i) {
+        std::cin >> z_function[i];
+    }
+    std::cout << DoStringFromZFunction(z_function);
+}
+

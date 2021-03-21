@@ -1,0 +1,119 @@
+#include <iostream>
+#include <vector>
+
+struct Edge {
+    int first;
+    int second;
+    int weight;
+};
+
+class Dsu {
+    mutable std::vector<int> predecessors_;
+    std::vector<size_t> ranks_;
+
+public:
+    explicit Dsu(size_t n_sets);
+
+    int MakeSet();
+
+    int FindSet(int x) const;
+
+    void Union(int x, int y);
+};
+
+Dsu::Dsu(size_t n_sets) : predecessors_(n_sets), ranks_(n_sets, 0) {
+    for (int i = 0; i < n_sets; ++i) {
+        predecessors_[i] = i;
+    }
+}
+
+int Dsu::MakeSet() {
+    predecessors_.push_back(predecessors_.size());
+    ranks_.push_back(0);
+    return predecessors_.size() - 1;
+}
+
+int Dsu::FindSet(int x) const {
+    if (predecessors_[x] == x) {
+        return x;
+    }
+    predecessors_[x] = FindSet(predecessors_[x]);
+    return predecessors_[x];
+}
+
+void Dsu::Union(int x, int y) {
+    x = FindSet(x);
+    y = FindSet(y);
+    if (ranks_[x] < ranks_[y]) {
+        predecessors_[x] = y;
+    } else if (ranks_[y] < ranks_[x]) {
+        predecessors_[y] = x;
+    } else {
+        ++ranks_[x];
+        predecessors_[y] = x;
+    }
+}
+
+std::vector<Edge> Boruvka(std::vector<std::vector<Edge>> graph) {
+    const int number_of_vertex = graph.size();
+    std::vector<Edge*> min_path(number_of_vertex, nullptr);
+    std::vector<Edge> mst;
+    int number_of_trees = number_of_vertex;
+    Dsu dsu(number_of_vertex);
+    while (number_of_trees > 1) {
+        min_path.assign(number_of_vertex, nullptr);
+        for (int i = 0; i < number_of_vertex; ++i) {
+            for (int j = 0; j < graph[i].size(); ++j) {
+                Edge edge = graph[i][j];
+                int first_path = dsu.FindSet(edge.first);
+                int second_path = dsu.FindSet(edge.second);
+
+                if (first_path == second_path) {
+                    continue;
+                } else {
+                    if (min_path[first_path] == nullptr ||
+                        min_path[first_path]->weight > edge.weight) {
+                        min_path[first_path] = &graph[i][j];
+                    }
+                    if (min_path[second_path] == nullptr ||
+                        min_path[second_path]->weight > edge.weight) {
+                        min_path[second_path] = &graph[i][j];
+                    }
+                }
+            }
+        }
+
+        for (int i = 0; i < number_of_vertex; ++i) {
+            if (min_path[i] != nullptr) {
+                int first_path = dsu.FindSet(min_path[i]->first);
+                int second_path = dsu.FindSet(min_path[i]->second);
+                if (first_path == second_path) {
+                    continue;
+                }
+                mst.emplace_back(
+                        Edge{min_path[i]->first, min_path[i]->second, min_path[i]->weight});
+                dsu.Union(first_path, second_path);
+                --number_of_trees;
+            }
+        }
+    }
+    return mst;
+}
+
+int main() {
+    int n, m;
+    std::cin >> n >> m;
+    std::vector<std::vector<Edge>> graph(n);
+    for (int i = 0; i < m; ++i) {
+        int first, second, weight;
+        std::cin >> first >> second >> weight;
+        graph[first-1].push_back(Edge{first-1, second-1, weight});
+    }
+
+    std::vector<Edge> mst = Boruvka(graph);
+    int answer = 0;
+    for (auto edge : mst) {
+        answer += edge.weight;
+    }
+    std::cout << answer;
+}

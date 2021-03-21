@@ -1,0 +1,56 @@
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <algorithm>
+const int max_size = 100000001;
+
+int minElement(int begin, int end, const std::vector<int> &distance, const std::vector<bool> &were_here) {
+    int min = begin;
+    int now_elem = max_size;
+    for(int j = begin; j < end; ++j) {
+        if(!were_here[j] && distance[j] <= now_elem) {
+            min = j;
+            now_elem = distance[min];
+        }
+    }
+    return min;
+}
+
+
+std::vector<int> Distance(const std::vector<std::vector<int>> &graph, int start) {
+    const int size = graph.size();
+    std::vector<int> distance(size, max_size);
+    distance[start] = 0;
+    std::vector<bool> were_here(size, false);
+    for (int i = 0; i < size - 1; ++i) {
+        int new_top = minElement(0, size, distance, were_here);
+        were_here[new_top] = true;
+        for (int j = 0; j < size; ++j) {
+            if (!were_here[j] && graph[new_top][j] > 0 &&
+                distance[new_top] + graph[new_top][j] < distance[j]) {
+                distance[j] = distance[new_top] + graph[new_top][j];
+            }
+        }
+    }
+    return distance;
+}
+
+int main() {
+    std::ios_base::sync_with_stdio(false);
+    int number_of_vertex, start, finish;
+    std::cin >> number_of_vertex >> start >> finish;
+    std::vector<std::vector<int>> graph(number_of_vertex);
+    for (int i = 0; i < number_of_vertex; ++i) {
+        graph[i].resize(number_of_vertex);
+        for (int j = 0; j < number_of_vertex; ++j) {
+            std::cin >> graph[i][j];
+        }
+    }
+    std::vector<int> answer = Distance(graph, start - 1);
+    if(answer[finish-1] == max_size) {
+        std::cout << -1;
+        return 0;
+    }
+    std::cout << answer[finish-1];
+}
+

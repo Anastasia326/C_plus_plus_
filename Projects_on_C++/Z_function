@@ -1,0 +1,33 @@
+#include <iostream>
+#include <vector>
+#include <string>
+
+std::vector<size_t> ZFunction(const std::string_view &my_string) {
+    const auto size = my_string.size();
+    std::vector<size_t> answer(size, 0);
+    size_t left = 0, right = 0;
+    for (size_t i = 1; i < size; ++i) {
+        if (i <= right) {
+            answer[i] = std::min(right + 1 - i, answer[i - left]);
+        }
+        while ((i + answer[i] < size) && (my_string[answer[i]] == my_string[i + answer[i]])) {
+            ++answer[i];
+        }
+        if (i + answer[i] > right + 1) {
+            right = i + answer[i] - 1;
+            left = i;
+        }
+    }
+    answer[0] = size;
+    return answer;
+}
+
+int main() {
+    std::string my_string;
+    std::cin >> my_string;
+    std::vector<size_t> z_function = ZFunction(my_string);
+    for (auto elem : z_function) {
+        std::cout << elem << " ";
+    }
+}
+

@@ -1,0 +1,169 @@
+#include <iostream>
+#include <vector>
+#include <algorithm>
+
+size_t ToPowOfTwo(size_t x) {
+    --x;
+    for (size_t i = 1; i < 32; i <<= 1u) {
+        x |= (x >> i);
+    }
+    return ++x;
+}
+
+template<typename Element>
+class MinOperation {
+    const Element neutral = 2147483648;
+    Element operator()(const Element &first, const Element &second) {
+        return (first > second) ? second : first;
+    }
+};
+
+template<typename Element>
+class UpdateSumOperation {
+    void operator()(Element &element, Element value) {
+        element += value;
+    }
+};
+
+
+template<typename Elem, class Operation, class UpdateOperation>
+class DoubleTree {
+    size_t m_, n_;
+    std::vector<std::vector<Elem>> tree_;
+
+    static Elem Left(size_t i) {
+        return 2 * i + 1;
+    }
+
+    static Elem Right(size_t i) {
+        return 2 * i + 2;
+    }
+
+    void BuildSmallTrees(const std::vector<std::vector<Elem>> &array,
+                         size_t big_vertex, size_t left_x,
+                         size_t right_x) {
+        if (left_x != right_x) {
+            size_t average = (left_x + right_x) / 2;
+            BuildSmallTrees(array, Left(big_vertex), left_x, average);
+            BuildSmallTrees(array, Right(big_vertex), average + 1, right_x);
+        }
+        BuildBigTrees(array, big_vertex, left_x, right_x, 0, 0, m_ - 1);
+    }
+
+    void
+    BuildBigTrees(const std::vector<std::vector<Elem>> &array,
+                  size_t big_vertex, size_t left_x,
+                  size_t right_x, size_t small_vertex, size_t left_y,
+                  size_t right_y) {
+        if (left_y == right_y) {
+            if (left_x == right_x) {
+                tree_[big_vertex][small_vertex] = array[left_x][left_y];
+            } else {
+                tree_[big_vertex][small_vertex] =
+                        Operation(tree_[Left(big_vertex)][small_vertex],
+                                  tree_[Right(big_vertex)][small_vertex]);
+            }
+        } else {
+            size_t average = (left_y + right_y) / 2;
+            BuildBigTrees(array, big_vertex, left_x, right_x, Left(small_vertex), left_y, average);
+            BuildBigTrees(array, big_vertex, left_x, right_x, Right(small_vertex), average + 1,
+                          right_y);
+            tree_[big_vertex][small_vertex] =
+                    Operation(tree_[big_vertex][Left(small_vertex)],
+                              tree_[big_vertex][Right(small_vertex)]);
+        }
+    }
+
+    Elem
+    MinSmall(size_t big_vertex, size_t small_vertex, size_t now_left_y,
+             size_t now_right_y, size_t left_y,
+             size_t right_y) const{
+        if (left_y > right_y) {
+            return Operation::neutral;
+        }
+        if (left_y == now_left_y && right_y == now_right_y) {
+            return tree_[big_vertex][small_vertex];
+        }
+        size_t average = (now_left_y + now_right_y) / 2;
+        return Operation(MinSmall(big_vertex, Left(small_vertex), now_left_y, average, left_y,
+                                  std::min(right_y, average)),
+                         MinSmall(big_vertex, Right(small_vertex), average + 1, now_right_y,
+                                  std::max(left_y, average + 1),
+                                  right_y));
+    }
+
+    Elem
+    MinAll(size_t big_vertex, size_t now_left_x, size_t now_right_x,
+           size_t left_x, size_t right_x,
+           size_t left_y, size_t right_y) const{
+        if (left_x > right_x) {
+            return Operation::neutral;
+        }
+        if (left_x == now_left_x && now_right_x == right_x) {
+            return MinSmall(big_vertex, 0, 0, m_ - 1, left_y, right_y);
+        }
+        size_t average = (now_left_x + now_right_x) / 2;
+        return Operation(
+                MinAll(Left(big_vertex), now_left_x, average, left_x, std::min(right_x, average),
+                       left_y,
+                       right_y),
+                MinAll(Right(big_vertex), average + 1, now_right_x, std::max(left_x, average + 1),
+                       right_x,
+                       left_y, right_y));
+    }
+
+    void
+    Update(size_t vertex_x, size_t left_x, size_t right_x, size_t x, size_t y, Elem new_value) {
+        if (left_x != right_x) {
+            size_t average = (left_x + right_x) / 2;
+            if (x <= average) {
+                Update(Left(vertex_x), left_x, average, x, y, new_value);
+            } else {
+                Update(Right(vertex_x), average + 1, right_x, x, y, new_value);
+            }
+        }
+        UpdateSmall(vertex_x, left_x, right_x, 0, 0, m_ - 1, x, y, new_value);
+    }
+
+    void UpdateSmall(size_t vertex_x, size_t left_x, size_t right_x, size_t vertex_y, size_t left_y,
+                     size_t right_y, size_t x, size_t y, Elem new_value) {
+        if (left_y == right_y) {
+            if (left_x == right_x) {
+                tree_[vertex_x][vertex_y] = new_value;
+            } else {
+                tree_[vertex_x][vertex_y] =
+                        tree_[Left(vertex_x)][vertex_y] + tree_[Right(vertex_x)][vertex_y];
+            }
+        } else {
+            size_t average = (left_y + right_y) / 2;
+            if (y <= average) {
+                UpdateSmall(vertex_x, left_x, right_x, Left(vertex_y), left_y, average, x, y,
+                            new_value);
+            } else {
+                UpdateSmall(vertex_x, left_x, right_x, Right(vertex_y), average + 1, right_y, x, y,
+                            new_value);
+            }
+            tree_[vertex_x][vertex_y] =
+                    tree_[vertex_x][Left(vertex_y)] + tree_[vertex_x][Right(vertex_y)];
+        }
+    }
+
+public:
+    DoubleTree(const std::vector<std::vector<Elem>> &array, size_t n,
+               size_t m) : m_(m), n_(n) {
+        m = 2 * ToPowOfTwo(m);
+        n = 2 * ToPowOfTwo(n);
+        tree_.assign(n - 1, std::vector<Elem>(m - 1, Operation::neutral));
+        BuildSmallTrees(array, 0, 0, n_ - 1);
+    }
+
+    Elem Minimum(size_t x_1, size_t x_2, size_t y_1, size_t y_2) const{
+        return MinAll(0, 0, n_ - 1, x_1, x_2, y_1, y_2);
+    }
+
+    void Update(size_t x, size_t y, Elem new_value) {
+        Update(0, 0, n_ - 1, x, y, new_value);
+    }
+
+};
+

@@ -1,0 +1,288 @@
+#include <iostream>
+#include <vector>
+#include <set>
+#include <algorithm>
+#include <cstdlib>
+#include <random>
+#include <string>
+#include <cstdlib>
+#include <ctime>
+#include <string>
+#include <random>
+
+template<typename KeyT, typename PriorityT>
+struct Treap {
+    static const int max_elem = 1000000001;
+
+    struct Node {
+        KeyT key;
+        unsigned int priority;
+        Node *left = nullptr;
+        Node *right = nullptr;
+        Node *parent = nullptr;
+        size_t size = 1;
+
+        Node(const KeyT &new_key, const PriorityT &pr) : key(new_key), priority(pr) {
+        }
+    };
+
+    Node *root_;
+
+    static size_t Size(Node *node) {
+        return (node == nullptr) ? 0 : node->size;
+    }
+
+    static void UpdateNode(Node *node) {
+        if (node != nullptr) {
+            node->size = 1 + Size(node->right) + Size(node->left);
+        }
+    }
+
+    static void Clean(Node *node) {
+        if (node != nullptr) {
+            if (node->left != nullptr) {
+                Clean(node->left);
+            }
+            if (node->right != nullptr) {
+                Clean(node->right);
+            }
+            delete node;
+        }
+    }
+
+    static void SetLeft(Node *treap, Node *left) {
+        if (treap != nullptr) {
+            treap->left = left;
+        }
+        if (left != nullptr) {
+            left->parent = treap;
+        }
+        UpdateNode(treap);
+    }
+
+    static void SetRight(Node *treap, Node *right) {
+        if (treap != nullptr) {
+            treap->right = right;
+        }
+        if (right != nullptr) {
+            right->parent = treap;
+        }
+        UpdateNode(treap);
+    }
+
+    Node *Delete(Node *node, KeyT key) {
+        auto[less_tree, ge_tree] = Split(node, key);
+        auto[equal_tree, greater_tree] = Split(ge_tree, key + 1);
+        delete equal_tree;
+        return Merge(less_tree, greater_tree);
+    }
+
+    KeyT Get(Node *node, size_t index) {
+        if (node == nullptr) {
+            return max_elem;
+        }
+        if (Size(node->left) == index) {
+            return node->key;
+        } else if (Size(node->left) < index) {
+            return Get(node->right, index - 1 - Size(node->left));
+        } else {
+            return Get(node->left, index);
+        }
+    }
+
+    bool Exists(Node *node, KeyT key) {
+        if (node == nullptr) {
+            return false;
+        }
+        if (key == node->key) {
+            return true;
+        }
+        if (key < node->key) {
+            return Exists(node->left, key);
+        } else {
+            return Exists(node->right, key);
+        }
+    }
+
+    Node *Next(Node *node, KeyT key) {
+        Node *now_node = node;
+        Node *find = nullptr;
+        while (now_node != nullptr) {
+            if (now_node->key > key) {
+                find = now_node;
+                now_node = now_node->left;
+            } else {
+                now_node = now_node->right;
+            }
+        }
+        return find;
+    }
+
+    Node *Prev(Node *node, KeyT key) {
+        Node *now_node = node;
+        Node *find = nullptr;
+        while (now_node != nullptr) {
+            if (now_node->key < key) {
+                find = now_node;
+                now_node = now_node->right;
+            } else {
+                now_node = now_node->left;
+            }
+        }
+        return find;
+    }
+
+    Node *Insert(Node *root, KeyT key, PriorityT prior) {
+        auto[less_tree, ge_tree] = Split(root, key);
+        Node *node = new Node(key, prior);
+        return Merge(Merge(less_tree, node), ge_tree);
+    }
+
+
+    static std::pair<Node *, Node *> Split(Node *node, KeyT x) {
+        if (node == nullptr) {
+            return {nullptr, nullptr};
+        }
+        if (node->key < x) {
+            std::pair<Node *, Node *> now_split = Split(node->right, x);
+            SetRight(node, now_split.first);
+            return {node, now_split.second};
+        } else {
+            std::pair<Node *, Node *> now_split = Split(node->left, x);
+            SetLeft(node, now_split.second);
+            return {now_split.first, node};
+        }
+    }
+
+    static Node *Merge(Node *left, Node *right) {
+        if (left == nullptr) {
+            return right;
+        }
+        if (right == nullptr) {
+            return left;
+        }
+        if (left->priority < right->priority) {
+            Node *node = Merge(left, right->left);
+            SetLeft(right, node);
+            return right;
+        } else {
+            Node *node = Merge(left->right, right);
+            SetRight(left, node);
+            return left;
+        }
+    }
+
+    Node* CopyLeaf(const Node* other) {
+        return (other != nullptr) ? new Node(other->key, other->priority) : nullptr;
+    }
+
+    Node* CopyTree(const Node* other) {
+        if(other == nullptr) {
+            return nullptr;
+        }
+        Node* root = CopyLeaf(other);
+        root->left = CopyTree(other->left);
+        root->right = CopyTree(other->right);
+        return root;
+    }
+
+public:
+    Treap() : root_(nullptr) {
+    }
+
+    Treap(const Treap &other) {
+        this->root_ = CopyTree(other);
+    }
+
+    Treap &operator=(const Treap &other) {
+        Treap copy(other);
+        std::swap(*this, copy);
+        return *this;
+    }
+
+    void Delete(KeyT key) {
+        if (Exists(key)) {
+            root_ = Delete(root_, key);
+        }
+    }
+
+    bool Exists(KeyT key) {
+        return Exists(root_, key);
+    }
+
+    KeyT Next(KeyT key) {
+        Node *next = Next(root_, key);
+        return (next == nullptr) ? max_elem : next->key;
+    }
+
+    KeyT Prev(KeyT key) {
+        Node *prev = Prev(root_, key);
+        return (prev == nullptr) ? max_elem : prev->key;
+    }
+
+    KeyT Kth(int index) {
+        return Get(root_, index);
+    }
+
+    void Insert(KeyT key, unsigned int prior) {
+        if (!Exists(key)) {
+            root_ = Insert(root_, key, prior);
+        }
+    }
+
+    ~Treap() {
+        Clean(root_);
+    }
+
+};
+
+int main() {
+    std::ios_base::sync_with_stdio(false);
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> distrib(1, 1000000000);
+    std::string command;
+    int x;
+    Treap<int, int> treap;
+    while (std::cin >> command) {
+        std::cin >> x;
+        if (command == "insert") {
+            treap.Insert(x, distrib(gen));
+        }
+        if (command == "exists") {
+            if (!treap.Exists(x)) {
+                std::cout << "false\n";
+            } else {
+                std::cout << "true\n";
+            }
+        }
+        if (command == "delete") {
+            treap.Delete(x);
+        }
+        if (command == "next") {
+            int next = treap.Next(x);
+            if (next == Treap<int, int>::max_elem) {
+                std::cout << "none\n";
+            } else {
+                std::cout << next << "\n";
+            }
+        }
+        if (command == "prev") {
+            int prev = treap.Prev(x);
+            if (prev == Treap<int, int>::max_elem) {
+                std::cout << "none\n";
+            } else {
+                std::cout << prev << "\n";
+            }
+        }
+        if (command == "kth") {
+            int kth = treap.Kth(x - 1);
+            if (kth == Treap<int, int>::max_elem) {
+                std::cout << "none\n";
+            } else {
+                std::cout << kth << "\n";
+            }
+        }
+    }
+}
+

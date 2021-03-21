@@ -1,0 +1,305 @@
+#include <iostream>
+#include <utility>
+#include <vector>
+#include <cstdio>
+#include <algorithm>
+
+struct Edge {
+    int from;
+    int to;
+    Edge (int a, int b);
+};
+
+Edge::Edge (int a, int b) : from(a), to(b){
+
+}
+
+class Graph {
+public:
+    virtual int Get_number_of_vertices() const = 0;
+
+    virtual int Get_number_of_edges() const = 0;
+
+    virtual void Push(const Edge &edge) = 0;
+
+    virtual void Pop(const Edge &edge) = 0;
+
+    virtual bool Is_edge_in_graph(const Edge &edge) const = 0;
+
+    virtual std::vector<int> Neighbors(const int &top) const = 0;
+
+    virtual void Transpose() = 0;
+};
+
+class AdjacencyListsGraph : public Graph {
+    std::vector<std::vector<int>> graph_;
+public:
+    explicit AdjacencyListsGraph(int size);
+
+    explicit AdjacencyListsGraph(std::vector<std::vector<int>> &my_graph);
+
+    int Get_element(int top, int neighbour) const;
+
+    int Get_number_of_vertices() const override;
+
+    int Get_number_of_edges() const override;
+
+    void Push(const Edge &edge) override;
+
+    void Pop(const Edge &edge) override;
+
+    bool Is_edge_in_graph(const Edge &edge) const override;
+
+    std::vector<int> Neighbors(const int &top) const override;
+
+    int Number_of_neighbors(int top) const;
+
+    void Transpose() override;
+};
+
+AdjacencyListsGraph::AdjacencyListsGraph(int size) {
+    graph_.resize(size);
+}
+
+AdjacencyListsGraph::AdjacencyListsGraph(std::vector<std::vector<int>> &my_graph) : graph_(std::move(my_graph)){
+}
+
+
+int AdjacencyListsGraph::Get_element(int top, int neighbour) const{
+    return graph_[top][neighbour];
+}
+
+int AdjacencyListsGraph::Get_number_of_vertices() const{
+    return graph_.size();
+}
+
+int AdjacencyListsGraph::Get_number_of_edges() const{
+    const int size = graph_.size();
+    int number = 0;
+    for (int i = 0; i < size; ++i) {
+        number += graph_[i].size();
+    }
+    return number;
+}
+
+void AdjacencyListsGraph::Push(const Edge &edge) {
+    graph_[edge.from].push_back(edge.to);
+}
+
+void AdjacencyListsGraph::Pop(const Edge &edge) {
+    int value_to_remove = edge.to;
+    graph_[edge.from].erase(
+            std::find(graph_[edge.from].begin(), graph_[edge.from].end(), value_to_remove));
+}
+
+bool AdjacencyListsGraph::Is_edge_in_graph(const Edge &edge) const{
+    return (std::find(graph_[edge.from].begin(), graph_[edge.from].end(), edge.to) !=
+            graph_[edge.from].end());
+}
+
+std::vector<int> AdjacencyListsGraph::Neighbors(const int &top) const{
+    return graph_[top];
+}
+
+
+int AdjacencyListsGraph::Number_of_neighbors(int top) const{
+    return Neighbors(top).size();
+}
+
+void AdjacencyListsGraph::Transpose() {
+    const int size = graph_.size();
+    std::vector<std::vector<int>> graph_T(size);
+    for (int i = 0; i < size; ++i) {
+        const int size_of_line = graph_[i].size();
+        for (size_t j = 0; j < size_of_line; ++j) {
+            int a = graph_[i][j];
+            graph_T[a].push_back(i);
+        }
+    }
+    graph_ = std::move(graph_T);
+}
+
+class AdjacencyMatrixGraph : public Graph {
+    std::vector<std::vector<bool>> graph_;
+public:
+    explicit AdjacencyMatrixGraph(int size);
+
+    explicit AdjacencyMatrixGraph(std::vector<std::vector<bool>> my_graph);
+
+    int Get_number_of_vertices() const override;
+
+    int Get_number_of_edges() const override;
+
+    void Push(const Edge &edge) override;
+
+    void Pop(const Edge &edge) override;
+
+    bool Is_edge_in_graph(const Edge &edge) const override;
+
+    int Get_element(int top, int neighbour) const;
+
+    int Number_of_neighbors(int top) const;
+
+    std::vector<int> Neighbors(const int &top) const override;
+
+    void Transpose() override;
+};
+
+AdjacencyMatrixGraph::AdjacencyMatrixGraph(int size) {
+    graph_.resize(size);
+    for (int i = 0; i < size; ++i) {
+        graph_[i].resize(size, false);
+    }
+}
+
+AdjacencyMatrixGraph::AdjacencyMatrixGraph(std::vector<std::vector<bool>> my_graph) : graph_(std::move(
+        my_graph)) {
+
+}
+
+int AdjacencyMatrixGraph::Get_number_of_vertices() const {
+    return graph_.size();
+}
+
+int AdjacencyMatrixGraph::Get_number_of_edges() const{
+    int counter = 0;
+    const int size = graph_.size();
+    for (int i = 0; i < size; ++i) {
+        for (auto top : graph_[i]) {
+            if (top) {
+                ++counter;
+            }
+        }
+    }
+    return counter;
+}
+
+void AdjacencyMatrixGraph::Push(const Edge &edge) {
+    graph_[edge.from][edge.to] = true;
+}
+
+void AdjacencyMatrixGraph::Pop(const Edge &edge) {
+    graph_[edge.from][edge.to] = false;
+}
+
+bool AdjacencyMatrixGraph::Is_edge_in_graph(const Edge &edge) const {
+    return graph_[edge.from][edge.to];
+}
+
+std::vector<int> AdjacencyMatrixGraph::Neighbors(const int &top) const {
+    std::vector<int> neighbour;
+    const int size = graph_.size();
+    for (int i = 1; i <= size; ++i) {
+        if (graph_[top][i]) {
+            neighbour.push_back(i);
+        }
+    }
+    return neighbour;
+}
+
+int AdjacencyMatrixGraph::Get_element(int top, int neighbour) const {
+    return Neighbors(top)[neighbour];
+}
+
+int AdjacencyMatrixGraph::Number_of_neighbors(int top) const {
+    return Neighbors(top).size();
+}
+
+void AdjacencyMatrixGraph::Transpose() {
+    const int size = graph_.size();
+    AdjacencyMatrixGraph graphT(size);
+    for (int i = 0; i < size; ++i) {
+        for (int j = 0; j < size; ++j) {
+            if (graph_[i][j]) {
+                graphT.graph_[j][i] = true;
+            }
+        }
+    }
+    graph_ = std::move(graphT.graph_);
+}
+
+void Sort(const int &top, std::vector<bool> &were_here, std::vector<int> &tops,
+          AdjacencyListsGraph &graph) {
+    were_here[top] = true;
+    const int size = graph.Number_of_neighbors(top);
+    for (size_t i = 0; i < size; ++i) {
+        if (!were_here[graph.Get_element(top, i)]) {
+            Sort(graph.Get_element(top, i), were_here, tops, graph);
+        }
+    }
+    tops.push_back(top);
+}
+
+enum Colors {
+    undiscovered,
+    discovered,
+    processed
+};
+
+void DFSVisit(AdjacencyListsGraph &graph, int source, std::vector<Colors> &color,
+              std::vector<int> &result) {
+    color[source] = discovered;
+    result.push_back(source);
+    const int size = graph.Number_of_neighbors(source);
+    for (size_t i = 0; i < size; ++i) {
+        int node = graph.Get_element(source, i);
+        if (color[node] == undiscovered) {
+            DFSVisit(graph, node, color, result);
+        }
+    }
+    color[source] = processed;
+}
+
+std::vector<std::vector<int>> StartComponents(AdjacencyListsGraph &graph) {
+    const int size = graph.Get_number_of_vertices();
+    std::vector<bool> were_here(size, false);
+    std::vector<int> tops;
+    std::vector<Colors> colors(size, undiscovered);
+    std::vector<std::vector<int>> components;
+
+    for (int i = 0; i < size; ++i) {
+        if (!were_here[i]) {
+            Sort(i, were_here, tops, graph);
+        }
+    }
+    graph.Transpose();
+    for (int i = 0; i < size; ++i) {
+        if (colors[tops[size - 1 -i]] == undiscovered) {
+            components.emplace_back();
+            DFSVisit(graph, tops[size - 1 -i], colors, components.back());
+        }
+    }
+
+    return components;
+
+}
+
+std::vector<int> Paint(const std::vector<std::vector<int>> &components, int size) {
+    std::vector<int> answer(size);
+    const int number_of_components = components.size();
+    for(int i = 0; i < number_of_components; ++i) {
+        for(auto j : components[i]) {
+            answer[j] = i + 1;
+        }
+    }
+    return answer;
+}
+
+int main() {
+    size_t n, m;
+    std::cin >> n >> m;
+    AdjacencyListsGraph graph(n);
+
+    for (size_t i = 0; i < m; ++i) {
+        int a, b;
+        std::cin >> a >> b;
+        graph.Push(Edge(a -1, b-1));
+    }
+    std::vector<std::vector<int>> answer = StartComponents(graph);
+    std::vector<int> components_for_graph = Paint(answer, n);
+    const int size = answer.size();
+    std::cout << size << "\n";
+    for (int j = 0; j < n; ++j) {
+        std::cout << components_for_graph[j] << " ";
+    }
+}
